@@ -107,7 +107,7 @@
     </div>
     <div class="profile">
       <span class="avatar">S</span>
-      <div>Demo student<span>Exploring what’s next</span></div>
+      <div><span id="profile-label">Explore by major</span><span>September 2026 snapshot</span></div>
       <span class="profile-dot"></span>
     </div>
   </div>
@@ -127,7 +127,7 @@
       ><strong id="breadcrumb-current">Explore pathways</strong>
     </div>
     <div class="topbar-right">
-      <span class="demo-badge"><span></span>Interactive demo</span
+      <span class="demo-badge"><span></span>Synthetic dataset</span
       ><button
         class="icon-button"
         id="about-button"
@@ -154,6 +154,13 @@
         </svg>
       </button>
     </section>
+    <div class="data-controls">
+      <label>Student profile<select id="student"><option value="">Explore without a student</option></select></label>
+      <label>Selected career<select id="role-select"><option value="">Loading roles…</option></select></label>
+      <label>Planning season<select id="season"><option>Spring</option><option>Summer</option><option>Fall</option></select></label>
+    </div>
+    <p id="data-status" role="status" aria-live="polite">Loading the dataset…</p>
+    <button id="retry-data" class="inline-link" hidden>Retry loading data ↗</button>
     <div class="view" id="view-explore">
       <section class="overview-grid" aria-label="Workspace overview">
         <article class="overview-card degree-card">
@@ -167,7 +174,7 @@
               <option value="cs">Computer Science</option>
               <option value="is">Information Systems</option>
             </select>
-            <p>Bachelor of Science <span>·</span> Demo profile</p>
+            <p>Bachelor of Science <span>·</span> Dataset profiles</p>
           </div>
         </article>
         <article class="overview-card">
@@ -176,7 +183,7 @@
           ></span>
           <div>
             <span class="metric-label">POSSIBLE DIRECTIONS</span>
-            <div class="metric-number">6 <span>career roles</span></div>
+            <div class="metric-number"><span id="role-count">—</span> <span>career roles</span></div>
             <p>More than one way forward</p>
           </div>
           <span class="metric-decoration">↗</span>
@@ -188,7 +195,7 @@
           <div>
             <span class="metric-label">GROW BEYOND THE CLASSROOM</span>
             <div class="metric-number">
-              3 <span>experiences to explore</span>
+              <span id="activity-count">—</span> <span>activity types</span>
             </div>
             <p>Small steps. New possibilities.</p>
           </div>
@@ -200,24 +207,12 @@
             <h2 id="pathway-title">Where could your degree take you?</h2>
             <p>Follow a connection. Find a role that feels like you.</p>
           </div>
-          <span class="subtle-badge">ILLUSTRATIVE PATHWAYS</span>
+          <span class="subtle-badge">OBSERVED ALUMNI PATHWAYS</span>
         </div>
         <div class="explorer">
           <div class="graph-panel">
             <div class="graph-toolbar">
-              <div
-                class="segmented"
-                role="group"
-                aria-label="Filter career pathways"
-              >
-                <button class="selected" data-filter="all" aria-pressed="true">
-                  All pathways</button
-                ><button data-filter="engineering" aria-pressed="false">
-                  Engineering</button
-                ><button data-filter="data" aria-pressed="false">
-                  Data & analytics
-                </button>
-              </div>
+              <label class="family-filter">Career family<select id="family"><option value="all">All pathways</option></select></label>
               <button
                 class="icon-button"
                 id="reset-graph"
@@ -238,44 +233,7 @@
                   YOUR FIRST CHAPTER
                 </div>
                 <div class="graph-column-label next-label">WHAT COMES NEXT</div>
-                <svg
-                  class="graph-edges"
-                  viewBox="0 0 830 368"
-                  aria-hidden="true"
-                >
-                  <path
-                    class="edge engineering"
-                    d="M176 184C222 184 212 80 264 80"
-                  />
-                  <path
-                    class="edge engineering"
-                    d="M176 184C222 184 212 184 264 184"
-                  />
-                  <path
-                    class="edge data"
-                    d="M176 184C222 184 212 288 264 288"
-                  />
-                  <path
-                    class="edge engineering"
-                    d="M457 80C505 80 505 80 560 80"
-                  />
-                  <path
-                    class="edge engineering"
-                    d="M457 184C510 184 505 80 560 80"
-                  />
-                  <path
-                    class="edge engineering"
-                    d="M457 184C505 184 510 184 560 184"
-                  />
-                  <path
-                    class="edge data"
-                    d="M457 288C505 288 510 288 560 288"
-                  />
-                  <path
-                    class="edge cross-edge"
-                    d="M457 80C515 80 505 184 560 184"
-                  />
-                </svg>
+                <svg class="graph-edges" viewBox="0 0 830 368" preserveAspectRatio="none" aria-hidden="true"></svg>
                 <div class="degree-node">
                   <span class="degree-node-icon"
                     ><svg class="icon"><use href="#i-cap" /></svg></span
@@ -290,7 +248,7 @@
               <div class="legend">
                 <span><i class="legend-dot green-dot"></i>Your degree</span
                 ><span><i class="legend-dot"></i>Career role</span
-                ><span><i class="legend-line"></i>Possible connection</span>
+                ><span><i class="legend-line"></i>Observed connection</span>
               </div>
               <span
                 >Click a role to explore
@@ -305,6 +263,10 @@
             aria-live="polite"
           ></aside>
         </div>
+      </section>
+      <section class="course-section" aria-labelledby="courses-heading">
+        <div class="section-heading"><div><h2 id="courses-heading">Connect your classes to your career.</h2><p id="course-summary">Select a student to personalize course suggestions.</p></div></div>
+        <div id="course-results"></div>
       </section>
       <section class="next-grid">
         <div class="experience-preview">
@@ -332,7 +294,7 @@
           <button data-prompt="How can I get started?" class="teaser-prompt">
             “How can I get started?”
             <svg class="icon"><use href="#i-arrow" /></svg></button
-          ><span class="teaser-caption">AI advisor · Scripted preview</span>
+          ><span class="teaser-caption">Advisor · Dataset-backed answers</span>
         </article>
       </section>
     </div>
@@ -341,18 +303,18 @@
         <div>
           <h2>Build experiences. Open doors.</h2>
           <p>
-            Explore how activities could connect to the skills in your next
-            role.
+            Explore activities recorded among alumni who held your selected role.
           </p>
         </div>
-        <span class="subtle-badge">ILLUSTRATIVE MATCHES</span>
+        <span class="subtle-badge">ALUMNI ACTIVITY PATTERNS</span>
       </div>
+      <p id="engagement-context" class="data-note"></p>
       <div class="engagement-grid" id="engagement-grid"></div>
+      <details class="alumni-examples"><summary>Explore example alumni pathways</summary><div id="alumni-examples"></div></details>
       <div class="context-note">
         <svg class="icon"><use href="#i-info" /></svg>
         <p>
-          These are example connections for the prototype. Dataset-backed
-          engagement matching will be added later.
+          Activities are counted once per alum. These associations do not establish that an activity caused a career outcome. Activities do not have skill tags in this dataset.
         </p>
       </div>
     </div>
@@ -367,7 +329,7 @@
             You bring the curiosity. Let’s make the possibilities a little
             clearer.
           </p>
-          <span class="subtle-badge">SCRIPTED PREVIEW · NO LIVE AI</span>
+          <span class="subtle-badge">DATASET ANSWERS · NO LIVE AI</span>
           <h3>Start with a question</h3>
           <button
             class="prompt-option"
@@ -417,8 +379,7 @@
             </button>
           </form>
           <p class="chat-disclaimer">
-            Demo responses are prewritten. They are not personalized career
-            predictions.
+            Answers summarize the supplied synthetic records. Live generative AI is not connected.
           </p>
         </div>
       </section>
@@ -437,7 +398,7 @@
         ><span class="footer-brand">careergraph.</span> A clearer view of what’s
         next.</span
       ><span
-        >Prototype · Illustrative data <span class="footer-divider">/</span>
+        >Prototype · Synthetic dataset <span class="footer-divider">/</span>
         <a
           href="https://github.com/jasonpaluck/hackumbc-2026"
           target="_blank"
@@ -461,17 +422,13 @@
   </div>
   <h2>A first look at your next chapter.</h2>
   <p>
-    Career Graph is a frontend prototype for the HackUMBC 2026 DoIT track.
-    Explore example career connections, save roles, and try a scripted advisor
-    conversation.
+    Career Graph connects the HackUMBC DoIT dataset to observed career pathways, course suggestions, alumni activities, and an advisor that summarizes dataset evidence.
   </p>
   <p>
-    Roles, salary ranges, skills, and activity matches here are hand-authored
-    examples, not findings from the track dataset. The supplied track dataset is
-    itself synthetic and does not describe real UMBC students or outcomes.
+    The supplied track dataset is synthetic and does not describe real UMBC students or outcomes. Salary summaries use nominal dollars for the selected job start year. Course coverage reflects exposure, not mastery or hiring probability.
   </p>
   <p>
-    The live AI advisor and dataset-backed matching are future integrations.
+    The advisor uses calculated dataset summaries rather than a live generative AI model. Bookmarks and activity interests stay in your browser.
   </p>
   <a
     class="inline-link"
