@@ -1,19 +1,24 @@
 import io
+import json
 import tempfile
 import unittest
+import urllib.error
 import zipfile
 from collections import Counter, defaultdict
 from pathlib import Path
+from unittest import mock
 
 from app import MAX_RESUME, create_app
 from career_data import CareerData
+from gemini import MAX_OUTPUT_TOKENS, TRUNCATION_NOTICE, Gemini, GeminiError
 
 
 class AppTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.temp = tempfile.TemporaryDirectory()
-        cls.app = create_app({"TESTING": True, "SECRET_KEY": "test-only-key", "UPLOAD_DIR": Path(cls.temp.name) / "resumes"})
+        cls.app = create_app({"TESTING": True, "SECRET_KEY": "test-only-key", "UPLOAD_DIR": Path(cls.temp.name) / "resumes",
+                              "GEMINI_API_KEY": ""})
         cls.data = cls.app.extensions["career_data"]
 
     @classmethod
@@ -25,6 +30,10 @@ class AppTests(unittest.TestCase):
         self.client.get("/")
         with self.client.session_transaction() as session:
             self.csrf = session["csrf"]
+        # Tests may swap in a fake advisor; put the original back so no test
+        # ever reaches the real Gemini API.
+        original = self.app.extensions["gemini"]
+        self.addCleanup(self.app.extensions.__setitem__, "gemini", original)
 
     def enroll(self, campus_id="CID-116490", content=b"Example Student\nPython and SQL", filename="resume.txt", client=None, csrf=None):
         return (client or self.client).post("/api/enroll", data={"campus_id":campus_id, "resume":(io.BytesIO(content), filename)}, headers={"X-CSRF-Token":csrf or self.csrf})
@@ -137,6 +146,61 @@ class AppTests(unittest.TestCase):
         self.enroll(content=document.getvalue(), filename="resume.docx")
         self.assertEqual(self.client.get("/api/resume/preview").json["paragraphs"], ["Campus Editor"])
 
+    def test_chat_uses_gemini_when_key_is_configured(self):
+        self.enroll()
+        reply = ("Data & Analytics is the most common first job for 212 of 1,480 employed Computer "
+                 "Science graduates. Your coursework does not cover containerization.\n\n"
+                 "These records are synthetic and are not a prediction about hiring.\n\n"
+                 "SUGGESTED RESUME LINE: Built a Flask service over a 1.4M-row dataset.")
+        self.app.extensions["gemini"] = Gemini("test-key")
+        with mock.patch.object(Gemini, "generate", return_value=reply) as generate:
+            chat = self.client.post("/api/resume/chat", json={"message": "What should I add?"}, headers={"X-CSRF-Token": self.csrf})
+        self.assertEqual(chat.status_code, 200)
+        self.assertEqual(chat.json["source"], "gemini")
+        self.assertEqual(chat.json["model"], "gemini-3-flash-preview")
+        self.assertEqual(chat.json["suggestion"], "Built a Flask service over a 1.4M-row dataset.")
+        self.assertIn("synthetic", chat.json["reply"])
+        self.assertNotIn("SUGGESTED RESUME LINE", chat.json["reply"])
+        prompt, system = generate.call_args.args
+        self.assertIn("CID-116490", prompt)
+        self.assertIn("Data & Analytics", prompt)
+        self.assertIn("Example Student", prompt)
+        self.assertIn("synthetic", system.lower())
+
+    def test_truncation_notice_never_lands_in_the_pasteable_line(self):
+        data = self.data
+        cases = {
+            "before": f"Reply text here.\n\n{TRUNCATION_NOTICE}\n\nSUGGESTED RESUME LINE: Analyzed a dataset.",
+            "after": f"Reply text here.\n\nSUGGESTED RESUME LINE: Analyzed a dataset.\n\n{TRUNCATION_NOTICE}",
+        }
+        for label, text in cases.items():
+            reply, suggestion = data._split_suggestion(text)
+            self.assertEqual(suggestion, "Analyzed a dataset.", label)
+            self.assertIn(TRUNCATION_NOTICE, reply, label)
+            self.assertIn("Reply text here.", reply, label)
+
+    def test_chat_falls_back_when_gemini_fails(self):
+        self.enroll()
+        self.app.extensions["gemini"] = Gemini("test-key")
+        with mock.patch.object(Gemini, "generate", side_effect=GeminiError("Gemini returned HTTP 429.")):
+            chat = self.client.post("/api/resume/chat", json={"message": "What should I add?"}, headers={"X-CSRF-Token": self.csrf})
+        self.assertEqual(chat.status_code, 200)
+        self.assertEqual(chat.json["source"], "local")
+        self.assertIn("429", chat.json["note"])
+        self.assertIn("Computer Science", chat.json["reply"])
+        self.assertTrue(chat.json["suggestion"])
+
+    def test_chat_config_never_exposes_the_key(self):
+        self.app.extensions["gemini"] = Gemini("super-secret-key")
+        config = self.client.get("/api/resume/chat/config")
+        self.assertEqual(config.json, {"engine": "gemini", "model": "gemini-3-flash-preview"})
+        self.assertNotIn("super-secret-key", config.get_data(as_text=True))
+        health = self.client.get("/api/health").json
+        self.assertEqual(health["advisor"]["engine"], "gemini")
+        self.assertNotIn("super-secret-key", json.dumps(health))
+        self.app.extensions["gemini"] = Gemini("")
+        self.assertEqual(self.client.get("/api/resume/chat/config").json["engine"], "local")
+
 
 class CalculationTests(unittest.TestCase):
     def fixture(self):
@@ -174,6 +238,97 @@ class CalculationTests(unittest.TestCase):
         self.assertEqual(result["cohort_count"], 2)
         self.assertEqual(result["employed_count"], 0)
         self.assertEqual(result["fields"], [])
+
+
+class GeminiClientTests(unittest.TestCase):
+    """The HTTP wrapper, with no network access."""
+
+    def setUp(self):
+        # No test in this class may reach the real API. Each one re-patches
+        # urlopen with the behaviour it needs.
+        patcher = mock.patch("gemini.urllib.request.urlopen")
+        self.urlopen = patcher.start()
+        self.addCleanup(patcher.stop)
+        self.urlopen.side_effect = AssertionError("tests must not call the real Gemini API")
+
+    def reply(self, payload):
+        body = json.dumps(payload).encode("utf-8")
+        return mock.MagicMock(__enter__=mock.MagicMock(return_value=mock.MagicMock(read=lambda: body)))
+
+    def call(self, client, payload, system="system", side_effect=None):
+        with mock.patch("gemini.urllib.request.urlopen", side_effect=side_effect, return_value=self.reply(payload) if side_effect is None else None) as urlopen:
+            result = client.generate("prompt", system)
+        return result, urlopen
+
+    def test_disabled_without_a_key(self):
+        self.assertFalse(Gemini("").enabled)
+        with self.assertRaises(GeminiError):
+            Gemini("").generate("prompt")
+
+    def test_request_shape_and_reply_parsing(self):
+        client = Gemini("secret-key")
+        self.assertTrue(client.enabled)
+        text, urlopen = self.call(client, {"candidates": [{"content": {"parts": [{"text": " hello "}]}}]})
+        self.assertEqual(text, "hello")
+        request = urlopen.call_args.args[0]
+        self.assertEqual(request.get_method(), "POST")
+        self.assertIn("gemini-3-flash-preview:generateContent", request.full_url)
+        self.assertEqual(request.get_header("X-goog-api-key"), "secret-key")
+        body = json.loads(request.data)
+        self.assertEqual(body["contents"], [{"role": "user", "parts": [{"text": "prompt"}]}])
+        self.assertEqual(body["systemInstruction"]["parts"][0]["text"], "system")
+
+    def test_custom_model_and_omitted_system_instruction(self):
+        text, urlopen = self.call(Gemini("k", "gemini-3.5-flash"), {"candidates": [{"content": {"parts": [{"text": "x"}]}}]}, system=None)
+        self.assertEqual(text, "x")
+        request = urlopen.call_args.args[0]
+        self.assertIn("gemini-3.5-flash:generateContent", request.full_url)
+        self.assertNotIn("systemInstruction", json.loads(request.data))
+
+    def test_errors_are_raised_without_leaking_the_key(self):
+        http_error = urllib.error.HTTPError("u", 429, "quota", {}, None)
+        self.addCleanup(http_error.close)
+        for side_effect, expected in ((http_error, "429"), (urllib.error.URLError("no route"), "Could not reach"),
+                                      (TimeoutError(), "Could not reach")):
+            with mock.patch("gemini.urllib.request.urlopen", side_effect=side_effect):
+                with self.assertRaises(GeminiError) as caught:
+                    Gemini("secret-key").generate("prompt")
+            self.assertIn(expected, str(caught.exception))
+            self.assertNotIn("secret-key", str(caught.exception))
+
+    def test_unusable_payloads_raise(self):
+        for payload in ({}, {"candidates": []}, {"candidates": [{"content": {"parts": []}}]},
+                        {"candidates": [{"content": {"parts": [{"text": "   "}]}}]}):
+            with self.assertRaises(GeminiError):
+                self.call(Gemini("k"), payload)
+
+    def test_blocked_prompt_reports_the_reason(self):
+        with self.assertRaises(GeminiError) as caught:
+            self.call(Gemini("k"), {"promptFeedback": {"blockReason": "SAFETY"}})
+        self.assertIn("SAFETY", str(caught.exception))
+
+    def test_gemini_3_gets_a_thinking_budget_and_a_larger_token_cap(self):
+        text, urlopen = self.call(Gemini("k"), {"candidates": [{"content": {"parts": [{"text": "x"}]}}]})
+        self.assertEqual(text, "x")
+        config = json.loads(urlopen.call_args.args[0].data)["generationConfig"]
+        self.assertEqual(config["maxOutputTokens"], MAX_OUTPUT_TOKENS)
+        self.assertGreater(MAX_OUTPUT_TOKENS, 1000)
+        self.assertEqual(config["thinkingConfig"], {"thinkingLevel": "low"})
+
+    def test_older_models_do_not_receive_thinking_level(self):
+        _, urlopen = self.call(Gemini("k", "gemini-2.5-flash"), {"candidates": [{"content": {"parts": [{"text": "x"}]}}]})
+        self.assertNotIn("thinkingConfig", json.loads(urlopen.call_args.args[0].data)["generationConfig"])
+
+    def test_truncated_reply_is_marked_instead_of_looking_complete(self):
+        payload = {"candidates": [{"content": {"parts": [{"text": "Software Engineering is the most common"}]},
+                                   "finishReason": "MAX_TOKENS"}]}
+        text, _ = self.call(Gemini("k"), payload)
+        self.assertIn("Software Engineering is the most common", text)
+        self.assertIn("cut off", text)
+
+    def test_complete_reply_is_not_marked(self):
+        text, _ = self.call(Gemini("k"), {"candidates": [{"content": {"parts": [{"text": "done"}]}, "finishReason": "STOP"}]})
+        self.assertEqual(text, "done")
 
 
 if __name__ == "__main__":

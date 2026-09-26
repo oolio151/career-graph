@@ -7,6 +7,7 @@ const resumeEscape = (value) =>
 
 const resumeCsrf = document.querySelector('meta[name="csrf-token"]').content;
 let resumeLoaded = false;
+let engineLabel = "Resume chat";
 
 async function resumeApi(url, options) {
   const response = await fetch(url, options);
@@ -19,13 +20,29 @@ async function resumeApi(url, options) {
   return data;
 }
 
-function resumeMessage(text, sender, suggestion) {
+async function loadEngineLabel() {
+  try {
+    const config = await resumeApi("/api/resume/chat/config");
+    engineLabel = config.engine === "gemini" ? `Gemini · ${config.model}` : "On-device rules";
+    const note = config.engine === "gemini"
+      ? "Replies come from Google Gemini, grounded in synthetic alumni records on this server. Not a promise about hiring."
+      : "No API key set, so replies come from on-device rules over synthetic alumni records. Not a promise about hiring.";
+    document.querySelector("#advisor-engine").textContent = engineLabel;
+    document.querySelector("#advisor-engine-dot").classList.add(config.engine === "gemini" ? "live" : "offline");
+    document.querySelector("#resume-chat-note").textContent = note;
+  } catch {
+    document.querySelector("#advisor-engine").textContent = "On-device rules";
+    document.querySelector("#advisor-engine-dot").classList.add("offline");
+  }
+}
+
+function resumeMessage(text, sender, suggestion, engine) {
   const log = document.querySelector("#resume-messages");
   const message = document.createElement("div");
   message.className = `message ${sender === "user" ? "user" : "advisor"}`;
   const label = document.createElement("span");
   label.className = "message-label";
-  label.textContent = sender === "user" ? "You" : "Resume chat";
+  label.textContent = sender === "user" ? "You" : engine || engineLabel;
   const body = document.createElement("p");
   body.textContent = text;
   message.append(label, body);
@@ -59,6 +76,22 @@ function resumeMessage(text, sender, suggestion) {
   }
   log.append(message);
   log.scrollTop = log.scrollHeight;
+  return message;
+}
+
+function showPending() {
+  const log = document.querySelector("#resume-messages");
+  const pending = document.createElement("div");
+  pending.className = "message advisor pending";
+  pending.id = "resume-pending";
+  pending.innerHTML = '<span class="message-label"></span><span class="pending-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="sr-only">Advisor is writing a reply</span>';
+  pending.querySelector(".message-label").textContent = engineLabel;
+  log.append(pending);
+  log.scrollTop = log.scrollHeight;
+}
+
+function clearPending() {
+  document.querySelector("#resume-pending")?.remove();
 }
 
 function renderResumeFile(preview) {
@@ -79,6 +112,7 @@ function renderResumeFile(preview) {
 async function loadResume() {
   if (resumeLoaded) return;
   resumeLoaded = true;
+  await loadEngineLabel();
   try {
     const preview = await resumeApi("/api/resume/preview");
     renderResumeFile(preview);
@@ -101,14 +135,22 @@ async function sendResumeChat(question) {
   document.querySelector("#resume-chat-input").value = "";
   const button = document.querySelector("#resume-chat-form button");
   button.disabled = true;
+  showPending();
   try {
     const data = await resumeApi("/api/resume/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": resumeCsrf },
       body: JSON.stringify({ message: value }),
     });
-    resumeMessage(data.reply, "advisor", data.suggestion);
+    clearPending();
+    const engine = data.source === "gemini" ? `Gemini · ${data.model}` : "On-device rules";
+    resumeMessage(data.reply, "advisor", data.suggestion, engine);
+    if (data.note) {
+      const note = document.querySelector("#resume-chat-note");
+      note.textContent = `${data.note} Answered by on-device rules instead.`;
+    }
   } catch (error) {
+    clearPending();
     resumeMessage(error.message || "Could not answer that. Try again.", "advisor");
   } finally {
     button.disabled = false;

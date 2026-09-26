@@ -1,5 +1,6 @@
 import io
 import json
+import os
 import re
 import secrets
 import xml.etree.ElementTree as ET
@@ -12,8 +13,16 @@ from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.utils import secure_filename
 
 from career_data import CareerData
+from gemini import DEFAULT_MODEL, Gemini
 
 MAX_RESUME = 5 * 1024 * 1024
+
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    pass
+else:
+    load_dotenv()
 
 
 def validate_resume(upload):
@@ -123,7 +132,9 @@ def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
     app.config.update(MAX_CONTENT_LENGTH=MAX_RESUME + 65536, SESSION_COOKIE_HTTPONLY=True,
                       SESSION_COOKIE_SAMESITE="Lax", DATA_DIR=Path(app.root_path) / "data",
-                      UPLOAD_DIR=Path(app.instance_path) / "resumes")
+                      UPLOAD_DIR=Path(app.instance_path) / "resumes",
+                      GEMINI_API_KEY=os.environ.get("GEMINI_API_KEY", ""),
+                      GEMINI_MODEL=os.environ.get("GEMINI_MODEL", DEFAULT_MODEL))
     if test_config:
         app.config.update(test_config)
     private = Path(app.config["UPLOAD_DIR"])
@@ -140,6 +151,7 @@ def create_app(test_config=None):
         app.config["SECRET_KEY"] = key_file.read_text()
     dataset = CareerData(app.config["DATA_DIR"])
     app.extensions["career_data"] = dataset
+    app.extensions["gemini"] = Gemini(app.config["GEMINI_API_KEY"], app.config["GEMINI_MODEL"])
 
     def state():
         token = session.get("upload_id", "")
@@ -193,7 +205,17 @@ def create_app(test_config=None):
 
     @app.get("/api/health")
     def health():
-        return {"status": "ok", "app": "career-graph"}
+        gemini = app.extensions["gemini"]
+        return {"status": "ok", "app": "career-graph",
+                "advisor": {"engine": "gemini" if gemini.enabled else "on-device rules",
+                            "model": gemini.model if gemini.enabled else None}}
+
+    @app.get("/api/resume/chat/config")
+    def resume_chat_config():
+        """What the chat panel should label itself. Exposes no key material."""
+        gemini = app.extensions["gemini"]
+        return jsonify(engine="gemini" if gemini.enabled else "local",
+                       model=gemini.model if gemini.enabled else "on-device rules")
 
     @app.get("/api/students/<campus_id>")
     def student(campus_id):
@@ -302,7 +324,8 @@ def create_app(test_config=None):
         message = request.get_json(silent=True) or {}
         try:
             text = resume_plain_text(current["extension"], file.read_bytes())[:20000]
-            return jsonify(dataset.coach_resume(current["campus_id"], text, message.get("message", "")))
+            return jsonify(dataset.coach_resume(current["campus_id"], text, message.get("message", ""),
+                                                app.extensions["gemini"]))
         except ValueError as error:
             return jsonify(error=str(error)), 400
 
