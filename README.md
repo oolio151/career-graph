@@ -16,7 +16,7 @@ cp .env.example .env
 python -m flask --app app:create_app run --debug
 ```
 
-Open http://127.0.0.1:5000. The health endpoint is available at `/api/health`.
+Open http://127.0.0.1:5000 to see the campus-ID login page. Enter `-1` and select **Continue** to open the demo. The health endpoint is available at `/api/health`.
 Stop the server with Ctrl+C. Debug mode is for local development only.
 
 On Windows PowerShell, create and activate the environment with:
@@ -33,7 +33,8 @@ python -m flask --app app:create_app run --debug
 
 - `app.py`: Flask application factory, page routes, and API endpoints.
 - `templates/base.html`: shared page layout.
-- `templates/index.html`: home page.
+- `templates/login.html`: campus-ID entry page.
+- `templates/index.html`: demo dashboard.
 - `static/css/style.css`: styles.
 - `static/js/main.js`: browser JavaScript and API calls.
 - `requirements.txt`: Python dependencies.
@@ -51,6 +52,8 @@ python -c "from app import create_app; c = create_app().test_client(); assert c.
 ```
 
 ## Frontend demo
+
+`/` and `/login` show the placeholder campus-ID form. IDs use the format `CID-XXXXXX` (six digits). Normal IDs display a placeholder message and never load a student record or create an authenticated session. The special value `-1` redirects directly to `/demo`, skipping any student lookup or data loading. `/demo` is also directly accessible for development; it displays the existing illustrative fixtures, not campus data. The brand link returns to the login page.
 
 - **Explore pathways:** Switch between Computer Science and Information Systems, filter career branches, and select roles to see example skills and salary ranges.
 - **My engagement:** Explore three example activities and save your interests.

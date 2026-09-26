@@ -1,4 +1,6 @@
-{% extends "base.html" %} {% block content %}
+{% extends "base.html" %} {% block scripts %}
+<script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
+{% endblock %} {% block content %}
 <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <symbol id="i-graph" viewBox="0 0 24 24">
     <path d="m8 7 8 4M8 17l8-4M6 9v6" />
@@ -127,7 +129,10 @@
       ><strong id="breadcrumb-current">Explore pathways</strong>
     </div>
     <div class="topbar-right">
-      <span class="demo-badge"><span></span>Interactive demo</span
+      <span
+        class="demo-badge"
+        title="No campus record is loaded. All content is illustrative."
+        ><span></span>Demo · No student data</span
       ><button
         class="icon-button"
         id="about-button"
