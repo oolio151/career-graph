@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="card" aria-labelledby="page-title">
+    <p class="eyebrow">hackUMBC 2026 · DoIT track</p>
+    <h1 id="page-title">Career Graph</h1>
+    <p>Your Flask starter is ready. Build something great.</p>
+    <button id="check-api" type="button" data-url="{{ url_for('health') }}">Check backend connection</button>
+    <p id="api-status" role="status" aria-live="polite">Ready to connect.</p>
+  </section>
+{% endblock %}
