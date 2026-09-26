@@ -63,8 +63,6 @@
     <button class="nav-item" data-view="resume">Resume</button>
     <button class="nav-item" data-view="explore">Map demo</button>
     <button class="nav-item" data-view="engagement">Activities</button>
-    <button class="nav-item" data-view="advisor">Advisor</button>
-    <button class="nav-item" data-view="saved">Saved <span id="saved-count" class="saved-count">0</span></button>
   </nav>
   <button class="icon-button" id="about-button" aria-label="About this demo"><svg class="icon" aria-hidden="true"><use href="#i-info" /></svg></button>
 </header>
@@ -72,7 +70,6 @@
   <main id="main" tabindex="-1">
     <section class="page-heading" hidden>
       <div><h1 id="page-title">Find your next step.</h1><p id="page-description">Your degree. A few possibilities. A place to start.</p></div>
-      <button class="primary-button" data-view="advisor"><svg class="icon" aria-hidden="true"><use href="#i-spark" /></svg>Ask the advisor</button>
     </section>
     {% include "discover.html" %}
     {% include "resume.html" %}
@@ -198,75 +195,6 @@
       <div class="engagement-grid" id="engagement-grid"></div>
       <p class="context-note">Example activities. Save the ones you want to try.</p>
     </div>
-    <div class="view" id="view-advisor" hidden>
-      <section class="chat-layout">
-        <aside class="chat-intro">
-          <span class="advisor-spark"
-            ><svg class="icon"><use href="#i-spark" /></svg
-          ></span>
-          <h2>What’s on your mind?</h2>
-          <p>
-            Choose a question or ask your own.
-          </p>
-          <span class="subtle-badge">Demo advisor · Prewritten replies</span>
-          <h3>Start with a question</h3>
-          <button
-            class="prompt-option"
-            data-prompt="What skills should I build?"
-          >
-            What skills should I build? ↗</button
-          ><button
-            class="prompt-option"
-            data-prompt="Which experiences could help me?"
-          >
-            Which experiences could help me? ↗</button
-          ><button
-            class="prompt-option"
-            data-prompt="How can I explore career paths?"
-          >
-            How can I explore career paths? ↗
-          </button>
-        </aside>
-        <div class="chat-card">
-          <div class="chat-header">
-            <span class="metric-icon green"
-              ><svg class="icon"><use href="#i-spark" /></svg
-            ></span>
-            <div>
-              <strong>Your career advisor</strong
-              ><span>Demo conversation</span>
-            </div>
-            <button class="inline-link" id="clear-chat">Reset chat</button>
-          </div>
-          <div
-            id="chat-messages"
-            class="chat-messages"
-            role="log"
-            aria-label="Advisor conversation"
-            aria-live="polite"
-          ></div>
-          <form id="chat-form">
-            <label class="sr-only" for="chat-input">Ask a career question</label
-            ><input
-              id="chat-input"
-              placeholder="What’s on your mind?"
-              maxlength="500"
-              required
-              autocomplete="off"
-            /><button class="primary-button" aria-label="Send message">
-              <svg class="icon"><use href="#i-arrow" /></svg>
-            </button>
-          </form>
-          <p class="chat-disclaimer">
-            Demo responses are prewritten. They are not personalized career
-            predictions.
-          </p>
-        </div>
-      </section>
-    </div>
-    <div class="view" id="view-saved" hidden>
-      <div id="saved-roles" class="saved-grid"></div>
-    </div>
     <footer class="page-footer"><span class="footer-brand">careergraph</span><span>Synthetic data · Sept 2026</span><a href="https://github.com/jasonpaluck/hackumbc-2026" target="_blank" rel="noopener noreferrer">Made for HackUMBC</a></footer>
   </main>
 </div>
@@ -288,7 +216,7 @@
     open jobs or predictions.
   </p>
   <p>
-    The pathway map, example salaries, activities, and advisor replies are a
+    The pathway map, example salaries, and activities are a
     separate demo. They are not calculated from those records. The dataset does
     not describe real UMBC students or employers.
   </p>

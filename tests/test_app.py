@@ -56,6 +56,23 @@ class AppTests(unittest.TestCase):
         self.assertIn("attachment", downloaded.headers["Content-Disposition"])
         downloaded.close()
 
+    def test_skip_resume_then_upload_in_workspace(self):
+        response = self.client.post("/api/enroll", data={"campus_id": "CID-116490"},
+                                    headers={"X-CSRF-Token": self.csrf})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.client.get("/api/session").json["resume"]["filename"], "")
+        self.assertEqual(self.client.get("/api/discover").status_code, 200)
+        page = self.client.get("/app").data
+        self.assertIn(b'id="resume-upload-form"', page)
+        self.assertNotIn(b'id="view-advisor"', page)
+        self.assertNotIn(b'id="view-saved"', page)
+        self.assertEqual(self.client.get("/api/resume/preview").status_code, 404)
+        self.assertEqual(self.enroll().status_code, 200)
+        self.assertEqual(self.client.get("/api/resume/preview").status_code, 200)
+        reply = self.client.post("/api/resume/chat", json={"message": "What can I improve?"},
+                                 headers={"X-CSRF-Token": self.csrf})
+        self.assertEqual(reply.status_code, 200)
+
     def test_current_students_only_and_missing_gpa(self):
         self.assertEqual(self.client.get("/api/students/CID-655977").status_code, 404)
         self.assertEqual(self.client.get("/api/students/CID-000000").status_code, 404)

@@ -27,6 +27,16 @@
         </div>
         <a class="secondary-button" href="/api/resume">Download</a>
       </div>
+      <div id="resume-upload-prompt" class="resume-upload-prompt" hidden>
+        <h3>Add your resume to get started.</h3>
+        <p class="field-hint">Upload a PDF, DOCX, or TXT file to preview it and use Resume Studio.</p>
+        <form id="resume-upload-form">
+          <label for="resume-upload-file">Resume file</label>
+          <input id="resume-upload-file" name="resume" type="file" accept=".pdf,.docx,.txt" required>
+          <button class="primary-button" type="submit">Upload resume</button>
+          <p id="resume-upload-status" class="field-hint" role="status"></p>
+        </form>
+      </div>
       <div id="resume-canvas"></div>
     </section>
   </div>

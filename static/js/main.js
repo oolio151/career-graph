@@ -159,7 +159,6 @@ function readIds(key, valid) {
   }
 }
 const storageKey = (key) => `${document.body.dataset.studentId}.${key}`;
-const saved = readIds("careergraph.saved", Object.keys(roles));
 const planned = readIds(
   "careergraph.activities",
   activities.map((a) => a.id),
@@ -189,8 +188,6 @@ const pages = {
   resume: ["Resume", "Shape the resume.", "The file you uploaded, with a chat beside it."],
   explore: ["Explore", "Find your next step.", "Your degree. A few possibilities. A place to start."],
   engagement: ["Activities", "Learn by doing.", "Pick something you’d like to try."],
-  advisor: ["Advisor", "Let’s figure it out.", "Ask about roles, skills, or getting started."],
-  saved: ["Saved", "Keep your options open.", "Your saved roles, right here in this browser."],
 };
 function showView(view) {
   if (!pages[view]) return;
@@ -207,8 +204,7 @@ function showView(view) {
   $("#page-title").innerHTML = pages[view][1];
   $("#page-description").textContent = pages[view][2];
   $(".page-heading").hidden = view === "discover" || view === "resume";
-  $(".page-heading > .primary-button").hidden = view === "advisor" || view === "discover" || view === "resume";
-  if (view === "saved") renderSaved();
+  $(".page-heading > .primary-button").hidden = view === "discover" || view === "resume";
   if (view === "resume" && typeof loadResume === "function") loadResume();
   history.replaceState(null, "", `#${view}`);
   window.scrollTo({ top: 0 });
@@ -236,9 +232,8 @@ function renderGraph() {
 }
 function renderDetail() {
   const role = roles[selectedRole];
-  const isSaved = saved.has(selectedRole);
   $("#role-detail").innerHTML =
-    `<div class="detail-top"><span class="role-type">${role.stage === "First chapter" ? "Starting role" : "Next step"}</span><button class="icon-button ${isSaved ? "bookmarked" : ""}" data-save="${selectedRole}" aria-label="${isSaved ? "Unsave" : "Save"} ${role.title}" aria-pressed="${isSaved}">${icon("bookmark")}</button></div><h3>${role.title}</h3><p class="detail-description">${role.description}</p><div class="salary"><span>Example salary / year</span><strong>${role.salary}<small> / yr</small></strong></div><div class="skills-block"><p class="skills-title">Skills to explore</p><div class="tags">${role.skills.map((skill) => `<span class="tag">${skill}</span>`).join("")}</div></div><button class="primary-button" data-prompt="How can I explore becoming a ${role.title}?">Ask about this role ${icon("arrow")}</button>`;
+    `<div class="detail-top"><span class="role-type">${role.stage === "First chapter" ? "Starting role" : "Next step"}</span></div><h3>${role.title}</h3><p class="detail-description">${role.description}</p><div class="salary"><span>Example salary / year</span><strong>${role.salary}<small> / yr</small></strong></div><div class="skills-block"><p class="skills-title">Skills to explore</p><div class="tags">${role.skills.map((skill) => `<span class="tag">${skill}</span>`).join("")}</div></div>`;
 }
 function renderActivities() {
   $("#experience-preview").innerHTML = activities
@@ -253,17 +248,6 @@ function renderActivities() {
         `<article class="experience-card" id="activity-${a.id}" tabindex="-1"><div class="experience-top"><span class="metric-icon ${a.color}">${icon(a.icon)}</span><span>↗</span></div><h3>${a.name}</h3><p>${a.description}</p><div class="tags">${a.skills.map((skill) => `<span class="tag">${skill}</span>`).join("")}</div><div class="activity-details"><h4>A place to start</h4><p>${a.next}</p><button class="inline-link" data-open-role="${a.role}">Explore ${roles[a.role].title} ↗</button></div><button class="activity-toggle" data-plan="${a.id}" aria-pressed="${planned.has(a.id)}">${planned.has(a.id) ? "✓ Interested" : "+ I’m interested"}</button></article>`,
     )
     .join("");
-}
-function renderSaved() {
-  $("#saved-count").textContent = saved.size;
-  $("#saved-roles").innerHTML = saved.size
-    ? [...saved]
-        .map((id) => {
-          const role = roles[id];
-          return `<article class="saved-card"><span class="metric-icon green">${icon("case")}</span><h3>${role.title}</h3><p>${role.description}</p><div class="tags">${role.skills.map((skill) => `<span class="tag">${skill}</span>`).join("")}</div><div class="saved-card-actions"><button class="inline-link" data-open-role="${id}">Explore role ↗</button><button class="icon-button bookmarked" data-save="${id}" aria-label="Unsave ${role.title}">${icon("bookmark")}</button></div></article>`;
-        })
-        .join("")
-    : `<div class="empty-state">${icon("bookmark")}<h3>No saved roles yet.</h3><p>Tap the bookmark on a role to keep it here.</p><button class="primary-button" data-view="explore">Explore roles ${icon("arrow")}</button></div>`;
 }
 function openRole(id) {
   if (!roles[id]) return;
@@ -286,49 +270,6 @@ function updateFilters() {
     button.setAttribute("aria-pressed", String(active));
   });
 }
-function addMessage(text, sender) {
-  const message = document.createElement("div");
-  message.className = `message ${sender}`;
-  const label = document.createElement("span");
-  label.className = "message-label";
-  label.textContent = sender === "user" ? "You" : "Advisor · Demo";
-  message.append(label, document.createTextNode(text));
-  $("#chat-messages").append(message);
-  $("#chat-messages").scrollTop = $("#chat-messages").scrollHeight;
-}
-function resetChat() {
-  $("#chat-messages").replaceChildren();
-  addMessage(
-    "Hi! Want to explore a role, build a skill, or find an activity? Pick a question to get started.",
-    "advisor",
-  );
-}
-function replyTo(question) {
-  const text = question.toLowerCase();
-  const mentionedRole = Object.values(roles)
-    .sort((a, b) => b.title.length - a.title.length)
-    .find((role) => text.includes(role.title.toLowerCase()));
-  if (mentionedRole)
-    return `For ${mentionedRole.title}, try ${mentionedRole.skills.slice(0, 3).join(", ")}. Pick one skill and build a small project with it.\n\nSave the role if you’d like to come back to it.`;
-  if (/skill|learn|course/.test(text))
-    return `For ${roles[selectedRole].title}, start with ${roles[selectedRole].skills.slice(0, 3).join(", ")}. Choose one skill and practice it in a small project. These are example skills, not a review of your coursework.`;
-  if (/experience|club|research|hackathon|engage/.test(text))
-    return "Try a hackathon to build, research to investigate, or a club to collaborate. Open Activities and save one you’d like to try.";
-  if (/salary|money|roi|cost|pay/.test(text))
-    return "The salaries shown are examples, not current estimates or predictions. For now, explore the work and skills behind each role.";
-  if (/start|path|career|direction/.test(text))
-    return "Choose your major in Explore, then tap a role to see its skills. Save a role you like and pick an activity to try.";
-  return "This demo has prewritten replies. Try asking about career paths, skills, or activities.";
-}
-function sendQuestion(question) {
-  const value = question.trim().slice(0, 500);
-  if (!value) return;
-  showView("advisor");
-  addMessage(value, "user");
-  addMessage(replyTo(value), "advisor");
-  $("#chat-input").value = "";
-  $("#chat-input").focus({ preventScroll: true });
-}
 document.addEventListener("click", (event) => {
   const button = event.target.closest("button");
   if (!button) return;
@@ -345,29 +286,7 @@ document.addEventListener("click", (event) => {
     updateFilters();
     renderGraph();
   }
-  if (button.dataset.save) {
-    const id = button.dataset.save;
-    const restoreDetailFocus = button.closest("#role-detail");
-    if (saved.has(id)) saved.delete(id);
-    else saved.add(id);
-    const stored = persist("careergraph.saved", saved);
-    renderDetail();
-    renderSaved();
-    if (restoreDetailFocus)
-      $("#role-detail [data-save]").focus({ preventScroll: true });
-    else if (currentView === "saved") {
-      const target = $("#saved-roles button");
-      if (target) target.focus({ preventScroll: true });
-    }
-    if (stored)
-      notify(
-        saved.has(id)
-          ? "Role saved."
-          : "Role removed.",
-      );
-  }
   if (button.dataset.openRole) openRole(button.dataset.openRole);
-  if (button.dataset.prompt) sendQuestion(button.dataset.prompt);
   if (button.dataset.activity) {
     showView("engagement");
     $(`#activity-${button.dataset.activity}`).focus();
@@ -395,11 +314,6 @@ $("#reset-graph").addEventListener("click", () => {
   renderGraph();
   $(".graph-scroll").scrollLeft = 0;
 });
-$("#chat-form").addEventListener("submit", (event) => {
-  event.preventDefault();
-  sendQuestion($("#chat-input").value);
-});
-$("#clear-chat").addEventListener("click", resetChat);
 $("#about-button").addEventListener("click", () =>
   $("#about-dialog").showModal(),
 );
@@ -419,6 +333,4 @@ $("#about-dialog").addEventListener("click", (event) => {
 window.addEventListener("hashchange", () => showView(location.hash.slice(1)));
 renderGraph();
 renderActivities();
-renderSaved();
-resetChat();
 showView(pages[location.hash.slice(1)] ? location.hash.slice(1) : "discover");

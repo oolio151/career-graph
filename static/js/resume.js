@@ -8,6 +8,7 @@ const resumeEscape = (value) =>
 const resumeCsrf = document.querySelector('meta[name="csrf-token"]').content;
 let resumeLoaded = false;
 let engineLabel = "Resume chat";
+const resumeStudentId = document.body.dataset.studentId;
 
 async function resumeApi(url, options) {
   const response = await fetch(url, options);
@@ -109,11 +110,25 @@ function renderResumeFile(preview) {
   canvas.innerHTML = `<article class="resume-sheet" id="resume-sheet" contenteditable="true" spellcheck="true" aria-label="Editable resume text">${paragraphs.map((line) => `<p>${resumeEscape(line)}</p>`).join("")}</article>`;
 }
 
+function showResumeUpload() {
+  document.querySelector("#resume-upload-prompt").hidden = false;
+  document.querySelector("#resume-canvas").hidden = true;
+  document.querySelector("#resume-filename").textContent = "No resume uploaded";
+  document.querySelector("#resume-file-note").textContent = "Upload a file below to open Resume Studio.";
+  document.querySelector(".resume-stage-bar a").hidden = true;
+}
+
 async function loadResume() {
   if (resumeLoaded) return;
   resumeLoaded = true;
   await loadEngineLabel();
   try {
+    const session = await resumeApi("/api/session");
+    if (!session.resume || !session.resume.filename) {
+      showResumeUpload();
+      resumeMessage("Upload a resume to preview it and ask for suggestions.", "advisor");
+      return;
+    }
     const preview = await resumeApi("/api/resume/preview");
     renderResumeFile(preview);
     resumeMessage(
@@ -127,6 +142,37 @@ async function loadResume() {
     document.querySelector("#resume-file-note").textContent = error.message || "Could not open the resume.";
   }
 }
+
+document.querySelector("#resume-upload-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const file = document.querySelector("#resume-upload-file").files[0];
+  const status = document.querySelector("#resume-upload-status");
+  const button = form.querySelector("button");
+  if (!file || !file.size || file.size > 5 * 1024 * 1024) {
+    status.textContent = "Choose a nonempty resume smaller than 5 MB.";
+    return;
+  }
+  const body = new FormData();
+  body.set("campus_id", resumeStudentId);
+  body.set("resume", file);
+  button.disabled = true;
+  status.textContent = "Uploading…";
+  try {
+    const data = await resumeApi("/api/enroll", { method: "POST", headers: { "X-CSRF-Token": resumeCsrf }, body });
+    status.textContent = "Resume uploaded.";
+    form.reset();
+    document.querySelector("#resume-upload-prompt").hidden = true;
+    document.querySelector("#resume-canvas").hidden = false;
+    document.querySelector(".resume-stage-bar a").hidden = false;
+    resumeLoaded = false;
+    await loadResume();
+  } catch (error) {
+    status.textContent = error.message || "Upload failed. Try again.";
+  } finally {
+    button.disabled = false;
+  }
+});
 
 async function sendResumeChat(question) {
   const value = question.trim().slice(0, 500);
