@@ -334,7 +334,7 @@
             You bring the curiosity. Let’s make the possibilities a little
             clearer.
           </p>
-          <span class="subtle-badge">DATASET ANSWERS · NO LIVE AI</span>
+          <span class="subtle-badge" id="advisor-mode">CHECKING ADVISOR CONFIGURATION</span>
           <h3>Start with a question</h3>
           <button
             class="prompt-option"
@@ -371,6 +371,12 @@
             aria-label="Advisor conversation"
             aria-live="polite"
           ></div>
+          <div id="chat-pending" class="chat-thinking" role="status" aria-live="polite" hidden>
+            <span class="thinking-dots" aria-hidden="true">
+              <span></span><span></span><span></span>
+            </span>
+            <span id="chat-pending-label">Preparing your answer…</span>
+          </div>
           <form id="chat-form">
             <label class="sr-only" for="chat-input">Ask a career question</label
             ><input
@@ -383,8 +389,8 @@
               <svg class="icon"><use href="#i-arrow" /></svg>
             </button>
           </form>
-          <p class="chat-disclaimer">
-            Answers summarize the supplied synthetic records. Live generative AI is not connected.
+          <p class="chat-disclaimer" id="advisor-disclaimer">
+            Checking whether Gemini or dataset-only answers are configured.
           </p>
         </div>
       </section>
@@ -433,7 +439,7 @@
     The supplied track dataset is synthetic and does not describe real UMBC students or outcomes. Salary summaries use nominal dollars for the selected job start year. Course coverage reflects exposure, not mastery or hiring probability.
   </p>
   <p>
-    The advisor uses calculated dataset summaries rather than a live generative AI model. Bookmarks and activity interests stay in your browser.
+    When configured, the advisor sends your message, recent chat history, selected synthetic profile, and computed summaries to Google Gemini. Otherwise it uses dataset-only answers. Bookmarks and interests stay in your browser and are included as preferences when you ask Gemini a question.
   </p>
   <a
     class="inline-link"

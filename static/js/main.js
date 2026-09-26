@@ -15,7 +15,7 @@ if (initialProfile) {
   $('#major').disabled = true;
 }
 let currentView = 'explore', workspaceVersion = 0, detailVersion = 0, chatVersion = 0, toastTimer;
-let chatBusy = false;
+let chatBusy = false, chatHistory = [], chatScope = '', advisorMode = 'unknown';
 const pages = {
   explore:['Explore pathways','Your future, <em>connected.</em>','Connect what you’re learning to who you could become.'],
   engagement:['My engagement','Small steps. <em>More possibilities.</em>','Explore the experiences recorded along alumni career paths.'],
@@ -37,7 +37,7 @@ function persist(key, values) {
 async function api(path, params = {}, body) {
   const url = `/api/${path}${Object.keys(params).length ? '?' + new URLSearchParams(params) : ''}`;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
+  const timeout = setTimeout(() => controller.abort(), path === 'advisor' ? 50000 : 30000);
   try {
     const response = await fetch(url, {signal:controller.signal, ...(body ? {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)} : {})});
     const data = await response.json().catch(() => ({}));
@@ -184,31 +184,81 @@ async function openRole(id) {
   if (supported.length && !supported.includes(major)) { major = supported[0]; $('#major').value = major; student = ''; changedMajor = true; }
   showView('explore'); await loadWorkspace(changedMajor);
 }
-function addMessage(text, sender, sources = []) {
+function addMessage(text, sender, sources = [], mode = advisorMode) {
   const message = document.createElement('div'); message.className = `message ${sender}`;
-  const label = document.createElement('span'); label.className = 'message-label'; label.textContent = sender === 'user' ? 'YOU' : 'ADVISOR · DATASET ANSWER';
+  const label = document.createElement('span'); label.className = 'message-label';
+  label.textContent = sender === 'user' ? 'YOU' : mode === 'gemini' ? 'ADVISOR · GEMINI' : mode === 'dataset' ? 'ADVISOR · DATASET ANSWER' : 'ADVISOR';
   message.append(label, document.createTextNode(text));
   if (sources.length) {
     const sourceBlock = document.createElement('details'); sourceBlock.className = 'sources';
-    sourceBlock.innerHTML = `<summary>Supporting dataset records</summary><ul>${sources.map(s => `<li>${esc(s.file)} · ${s.count} records/participants. Example IDs: ${esc(s.record_ids.join(', ') || 'None')}</li>`).join('')}</ul>`;
+    sourceBlock.innerHTML = `<summary>${mode === 'gemini' ? 'Dataset context supplied to Gemini' : 'Supporting dataset records'}</summary><ul>${sources.map(s => `<li>${s.id ? '[' + esc(s.id) + '] ' : ''}${esc(s.file)} · ${s.count} records/participants. ${esc(s.scope || '')} Example IDs: ${esc(s.record_ids.join(', ') || 'None')}</li>`).join('')}</ul>`;
     message.append(sourceBlock);
   }
   $('#chat-messages').append(message); $('#chat-messages').scrollTop = $('#chat-messages').scrollHeight;
 }
+function setChatBusy(busy) {
+  chatBusy = busy;
+  $('#chat-form button').disabled = busy;
+  $('#chat-messages').setAttribute('aria-busy', String(busy));
+  $('#chat-pending-label').textContent = advisorMode === 'gemini'
+    ? 'Gemini is thinking…' : advisorMode === 'dataset'
+    ? 'Preparing your dataset answer…' : 'Preparing your answer…';
+  $('#chat-pending').hidden = !busy;
+}
+function welcomeMessage() {
+  return advisorMode === 'gemini'
+    ? 'Ask about skills, courses, alumni experiences, or salaries. Gemini uses the selected synthetic profile, computed dataset context, saved interests, and recent conversation. Replies can be mistaken; check the supplied records.'
+    : advisorMode === 'dataset'
+    ? 'Ask about skills, courses, alumni experiences, or salaries for the selected role. Gemini is not configured, so replies use the existing dataset-only advisor.'
+    : 'Select a career role and ask about your next step. Checking advisor configuration…';
+}
+async function loadAdvisorStatus() {
+  try {
+    const status = await api('advisor/status');
+    advisorMode = status.mode;
+    $('#advisor-mode').textContent = status.configured ? 'GEMINI · SYNTHETIC CONTEXT' : 'DATASET ANSWERS · GEMINI NOT CONFIGURED';
+    $('#advisor-disclaimer').textContent = status.configured
+      ? 'Messages, recent conversation, and selected synthetic student context are sent to Google Gemini. Check generated advice against the supplied records.'
+      : 'Gemini is not configured. Answers use computed synthetic dataset summaries; no messages are sent to Google.';
+    $('.teaser-caption').textContent = status.configured ? 'Gemini advisor · Dataset context' : 'Advisor · Dataset-only mode';
+    if (!chatHistory.length && !chatBusy && !$('#chat-messages .user')) {
+      $('#chat-messages').replaceChildren(); addMessage(welcomeMessage(), 'advisor');
+    }
+  } catch {
+    $('#advisor-mode').textContent = 'ADVISOR STATUS UNAVAILABLE';
+    $('#advisor-disclaimer').textContent = 'Advisor configuration could not be checked. Each reply identifies its source mode.';
+  }
+}
 function resetChat() {
-  ++chatVersion; chatBusy = false; $('#chat-form button').disabled = false; $('#chat-messages').replaceChildren();
-  addMessage('Ask about skills, courses, alumni experiences, or salaries for the selected role. Answers use the supplied synthetic data. This is a dataset advisor, not a live generative AI model.','advisor');
+  ++chatVersion; setChatBusy(false); chatHistory = []; chatScope = JSON.stringify([major, student]);
+  $('#chat-messages').replaceChildren(); addMessage(welcomeMessage(), 'advisor');
+}
+function rememberTurn(question, response) {
+  chatHistory.push({role:'user', text:question}, {role:'model', text:response.slice(0,3000)});
+  while (chatHistory.length > 8 || chatHistory.reduce((sum, turn) => sum + turn.text.length, 0) > 6000) chatHistory.splice(0,2);
 }
 async function sendQuestion(question) {
   const value = question.trim().slice(0,500); if (!value || chatBusy) return;
   if (!selectedRole) { notify('Choose a career role first.'); return; }
+  if (chatScope !== JSON.stringify([major, student])) resetChat();
   showView('advisor'); addMessage(value,'user'); $('#chat-input').value = '';
-  const version = ++chatVersion; chatBusy = true; $('#chat-form button').disabled = true;
+  const version = ++chatVersion; setChatBusy(true);
   try {
-    const result = await api('advisor', {}, {question:value, major, role:selectedRole, student, season});
-    if (version === chatVersion) addMessage(result.answer,'advisor',result.sources);
-  } catch (error) { if (version === chatVersion) addMessage(`Could not retrieve an answer: ${error.message}. Please try again.`,'advisor'); }
-  finally { if (version === chatVersion) { chatBusy = false; $('#chat-form button').disabled = false; } }
+    const result = await api('advisor', {}, {
+      question:value, major, role:selectedRole, student, season,
+      history:chatHistory, saved_roles:[...saved].slice(0,5), interests:[...planned].slice(0,10),
+      region:$('#salary-region')?.value || '', year:$('#salary-year')?.value || ''
+    });
+    if (version === chatVersion) {
+      addMessage(result.answer,'advisor',result.sources,result.mode);
+      if (result.mode === 'gemini') rememberTurn(value, result.answer);
+    }
+  } catch (error) {
+    if (version === chatVersion) {
+      addMessage(`Could not retrieve an answer: ${error.name === 'AbortError' ? 'The request timed out' : error.message}. Please try again.`, 'advisor', [], 'error');
+      $('#chat-input').value = value;
+    }
+  } finally { if (version === chatVersion) setChatBusy(false); }
 }
 document.addEventListener('click', event => {
   const button = event.target.closest('button'); if (!button) return;
@@ -228,10 +278,10 @@ document.addEventListener('click', event => {
 document.addEventListener('change', event => {
   if (event.target.id === 'salary-region' || event.target.id === 'salary-year') loadDetails($('#salary-region').value, $('#salary-year').value);
 });
-$('#major').addEventListener('change', event => { major = event.target.value; student = ''; selectedRole = ''; loadWorkspace(true); });
+$('#major').addEventListener('change', event => { major = event.target.value; student = ''; selectedRole = ''; resetChat(); loadWorkspace(true); });
 $('#family').addEventListener('change', event => { family = event.target.value; selectedRole = ''; loadWorkspace(); });
 $('#role-select').addEventListener('change', event => { selectedRole = event.target.value; loadWorkspace(); });
-$('#student').addEventListener('change', event => { student = event.target.value; $('#profile-label').textContent = student || 'Explore by major'; loadDetails(); });
+$('#student').addEventListener('change', event => { student = event.target.value; resetChat(); $('#profile-label').textContent = student || 'Explore by major'; loadDetails(); });
 $('#season').addEventListener('change', event => { season = event.target.value; loadDetails(); });
 $('#reset-graph').addEventListener('click', () => { family = 'all'; selectedRole = ''; $('#family').value = 'all'; loadWorkspace(); $('.graph-scroll').scrollLeft = 0; });
 $('#retry-data').addEventListener('click', () => options ? loadWorkspace(true) : initialize());
@@ -283,3 +333,5 @@ window.addEventListener("hashchange", () => showView(location.hash.slice(1)));
 resetChat();
 if (pages[location.hash.slice(1)]) showView(location.hash.slice(1));
 initialize();
+
+loadAdvisorStatus();

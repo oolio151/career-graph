@@ -1250,6 +1250,44 @@ main {
 #chat-input::placeholder {
   color: #95a289;
 }
+.chat-thinking {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 20px 12px;
+  padding: 12px 16px;
+  border: 1px solid #dfe7d5;
+  border-radius: 8px;
+  background: #f1f5eb;
+  color: #607454;
+  font-size: 12px;
+}
+.thinking-dots {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 16px;
+}
+.thinking-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #78955d;
+  animation: advisor-thinking 1.2s ease-in-out infinite;
+}
+.thinking-dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.thinking-dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes advisor-thinking {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.45; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .thinking-dots span { animation: none; }
+}
 .chat-disclaimer {
   font-size: 8px;
   text-align: center;

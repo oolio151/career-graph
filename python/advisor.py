@@ -1,11 +1,25 @@
-"""Dataset-backed advisor responses; no external AI provider is required."""
+"""Gemini advisor with an explicit dataset-only mode when unconfigured."""
 from python.data_loader import get_data
 from python.roles import role_detail
 from python.recommendations import recommend
 from python.engagement import engagement
+from python.gemini import advisor_status, generate
+from python.advisor_context import SYSTEM_INSTRUCTION, build_context
 
 
-def answer(question, major, role_id, student_id=None, season='Spring'):
+def answer(question, major, role_id, student_id=None, season='Spring', *,
+           history=None, saved_roles=None, interests=None, region=None, year=None):
+    if not advisor_status()['configured']:
+        return dataset_answer(question, major, role_id, student_id, season)
+    context, sources, target_id = build_context(
+        question, major, role_id, student_id, season, saved_roles or [],
+        interests or [], region, year)
+    return {'answer': generate(SYSTEM_INSTRUCTION, context, history or [], question),
+            'sources': sources, 'mode': 'gemini', 'role_id': target_id,
+            'model': advisor_status()['model']}
+
+
+def dataset_answer(question, major, role_id, student_id=None, season='Spring'):
     db = get_data()
     text = question.lower()
     mentioned = next((r for r in sorted(db.roles.values(), key=lambda r: -len(r['title']))

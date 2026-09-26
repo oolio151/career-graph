@@ -1,18 +1,23 @@
 import os
 import secrets
+from pathlib import Path
 
 from flask import Flask, redirect, render_template, request, session, url_for
+from dotenv import load_dotenv
 from python.api import api
 from python.auth import current_profile, select_profile
 
 
 def create_app():
+    load_dotenv(Path(__file__).resolve().parent / '.env')
     app = Flask(__name__)
     app.config.update(
         MAX_CONTENT_LENGTH=32 * 1024,
         SECRET_KEY=os.environ.get('SECRET_KEY') or secrets.token_hex(32),
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE='Lax',
+        GEMINI_API_KEY=os.environ.get('GEMINI_API_KEY', ''),
+        GEMINI_MODEL=os.environ.get('GEMINI_MODEL', 'gemini-3.8-flash'),
     )
     app.register_blueprint(api)
 

@@ -64,7 +64,7 @@ No parameters. Returns the supported selections:
 | `activity_types` | Objects with `id` and `name` |
 | `snapshot` | `2026-09-15` |
 | `synthetic` | `true` |
-| `advisor_mode` | `dataset` |
+| `advisor_mode` | `gemini` when server credentials/model are configured, otherwise `dataset` |
 
 ```bash
 curl 'http://127.0.0.1:5000/api/options'
@@ -223,43 +223,62 @@ Top-level `examples` contains up to three alumni with `campus_id`, `track`,
 When no alumni match, activity counts are zero and percentages are `null`.
 No activity-to-skill mapping is inferred.
 
+## GET /api/advisor/status
+
+Returns `{mode, configured, model}`. Mode is `gemini` when a server key and model
+are configured, otherwise `dataset`. The model is `null` in dataset-only mode.
+This endpoint does not call Google or load the CSVs, and configuration does not
+confirm key validity, quota, or model availability. It never returns the API key.
+
 ## POST /api/advisor
 
 | JSON field | Required | Default / meaning |
 | --- | --- | --- |
 | `question` | Yes | Nonblank string, at most 500 characters after trimming |
 | `major` | No | `cs` |
-| `role` | Normally | Selected role ID; an exact role title mentioned in the question overrides it |
-| `student` | No | Current student ID matching `major`; omit or use `""` for none |
-| `season` | No | `Spring`, used for personalized course suggestions |
+| `role` | Yes for Gemini | Selected dataset role ID; a role title mentioned in the question sets the question target |
+| `student` | No | Explicit current-student selection; `""` means no personal context. If omitted, uses the campus-ID session and its major when available |
+| `season` | No | `Spring`, `Summer`, or `Fall` for recommendations |
+| `region`, `year` | No | Strings matching the selected role's salary controls; empty means all regions / latest year |
+| `history` | No | Up to 8 alternating `{role: "user" or "model", text: "..."}` entries, starting with user and ending with model |
+| `saved_roles` | No | At most 5 dataset role IDs |
+| `interests` | No | At most 10 activity type IDs from `/api/options` |
 
-All supplied fields listed above must be strings, not `null`.
+Scalar fields must be strings, not `null`. History has at most 500 characters per
+user message, 3,000 per model reply, and 6,000 total. The current question is sent
+separately. The request-body limit remains 32 KiB. Profile selection is for the
+public synthetic dataset, not account authorization.
 
-```bash
-curl 'http://127.0.0.1:5000/api/advisor' \
-  -H 'Content-Type: application/json' \
-  -d '{"question":"What courses should I consider?","major":"cs","role":"software-engineer-i","student":"CID-116490","season":"Spring"}'
-```
+With Gemini configured, Flask builds context from existing calculations and
+selected records. It includes the profile, all of that student's transcript
+attempts and activities, catalog/prerequisites, computed coverage and suggestions,
+role/transition/salary summaries, alumni activity associations, saved preferences,
+and source metadata. Role summaries prioritize the question target and selected
+role, then saved roles, up to five. The selected role retains salary-panel filters;
+other roles default to all regions and their latest available start year.
 
-Response:
+The response contains:
 
 | Field | Contents |
 | --- | --- |
-| `answer` | Human-readable text calculated from dataset results |
-| `mode` | `dataset` |
-| `role_id` | Resolved role ID; omitted in the no-matching-records response |
-| `sources` | Objects with `file`, `record_ids`, and `count` |
+| `answer` | Plain-text generated reply, or deterministic dataset response |
+| `mode` | `gemini` or `dataset` |
+| `model` | Configured model ID, present for Gemini |
+| `role_id` | Resolved question target; legacy dataset no-record replies may omit it |
+| `sources` | Objects with `file`, `record_ids`, `count`; Gemini also supplies `id` (e.g. `S1`) and `scope` |
 
-Source IDs are examples, not an exhaustive list. Employment source counts are
-job rows; activity source counts are participating alumni; transcript references
-use a campus ID and count that student's attempts.
+Gemini is instructed to cite source IDs beside dataset claims. The supplied source
+list is not an assertion that every source was cited or that generation was
+independently verified. Example record IDs are not exhaustive: counts describe
+the stated cohort, which may be job rows, unique alumni, or one student's attempts.
+Transcript references use the student's campus ID as a lookup key.
 
-The advisor is deterministic, with no external model or conversation memory.
-Salary-related keywords select salary summaries; activity keywords select alumni
-activity summaries. Otherwise, a supplied student produces course recommendations,
-and no student produces a general skill/course overview. It does not calculate
-ROI or answer arbitrary questions. It uses the latest available salary year and
-all regions; salary-panel filters are not accepted by this endpoint.
+When no key/model is configured, the existing deterministic advisor remains
+available and returns `mode: dataset`. It uses keyword-based, independent answers
+and ignores history, preferences, and salary filters. A configured provider error
+returns `503` with a safe message instead of silently falling back. The backend
+stores no conversation history; clients supply recent exchanges with each request.
+Google receives the question, recent history, and selected synthetic context.
 
 ## Errors and status codes
 
@@ -270,6 +289,7 @@ all regions; salary-panel filters are not accepted by this endpoint.
 | `404` | Unknown URL; Flask's default HTML response |
 | `405` | Unsupported method; Flask's default HTML response |
 | `413` | Request body exceeds 32 KiB; Flask's default HTML response |
+| `503` | Gemini rejected, timed out, blocked, or failed to complete the request; JSON `{error, mode: "gemini"}` |
 
 Examples of validation errors:
 
