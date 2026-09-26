@@ -1,0 +1,140 @@
+{% extends "base.html" %} {% block title %}Welcome — Career Graph{% endblock %}
+{% block content %}
+<div class="login-layout">
+  <aside class="login-story" aria-label="Welcome to Career Graph">
+    <a href="{{ url_for('index') }}" class="brand">
+      <span class="brand-symbol"
+        ><svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m8 7 8 4M8 17l8-4M6 9v6" />
+          <circle cx="6" cy="6" r="3" />
+          <circle cx="18" cy="12" r="3" />
+          <circle cx="6" cy="18" r="3" /></svg></span
+      >career<span class="brand-light">graph</span
+      ><span class="brand-dot">.</span>
+    </a>
+    <div class="login-story-content">
+      <p class="eyebrow">YOUR NEXT CHAPTER STARTS HERE</p>
+      <h2>One starting point.<br /><em>So many possibilities.</em></h2>
+      <p>
+        Your degree, your experiences, your ambitions.<br />Discover how they
+        could connect.
+      </p>
+      <div
+        class="login-journey"
+        aria-label="Your degree connects to experiences and new possibilities"
+      >
+        <div class="journey-step">
+          <span class="journey-marker">01</span>
+          <div><span>WHERE YOU BEGIN</span><strong>Your degree</strong></div>
+          <span class="journey-star" aria-hidden="true">✳</span>
+        </div>
+        <div class="journey-connector" aria-hidden="true"></div>
+        <div class="journey-step">
+          <span class="journey-marker">02</span>
+          <div>
+            <span>WHAT YOU EXPLORE</span
+            ><strong>Experiences that shape you</strong>
+          </div>
+        </div>
+        <div class="journey-connector" aria-hidden="true"></div>
+        <div class="journey-step journey-destination">
+          <span class="journey-marker">03</span>
+          <div>
+            <span>WHO YOU COULD BECOME</span
+            ><strong>A future that feels like you</strong>
+          </div>
+          <span aria-hidden="true">↗</span>
+        </div>
+      </div>
+    </div>
+    <p class="login-story-footer">
+      <span class="live-dot"></span> BUILT FOR HACKUMBC 2026
+      <span>DoIT track</span>
+    </p>
+  </aside>
+  <main id="main" class="login-main" tabindex="-1">
+    <div class="login-topline">
+      <span class="university-mark">U</span
+      ><span
+        >UMBC <span class="login-topline-divider">/</span> Student
+        workspace</span
+      ><span class="subtle-badge">PROTOTYPE</span>
+    </div>
+    <section class="login-form-section" aria-labelledby="login-title">
+      <span class="login-welcome-icon" aria-hidden="true"
+        ><svg class="icon" viewBox="0 0 24 24">
+          <path d="m2 8 10-5 10 5-10 5L2 8Zm4 2v7c4 3 8 3 12 0v-7m4-2v8" /></svg
+      ></span>
+      <p class="eyebrow">A CLEARER VIEW OF WHAT’S NEXT</p>
+      <h1 id="login-title">Welcome to<br />your next <em>chapter.</em></h1>
+      <p class="login-intro">
+        Enter a campus ID from the supplied dataset to explore courses,
+        experiences, and career pathways for that student.
+      </p>
+      <form class="login-form" method="post" action="{{ url_for('index') }}">
+        <label for="campus-id">Campus ID</label>
+        <input
+          id="campus-id"
+          name="campus_id"
+          type="text"
+          placeholder="CID-123456"
+          value="{{ campus_id }}"
+          pattern="CID-[0-9]{6}|-1"
+          maxlength="10"
+          required
+          autocomplete="off"
+          autocapitalize="characters"
+          spellcheck="false"
+          aria-describedby="campus-id-hint{% if message %} login-status{% endif %}"
+          {%
+          if
+          invalid
+          %}aria-invalid="true"
+          {%
+          endif
+          %}
+          title="Enter CID- followed by six digits, or -1 to open the demo."
+        />
+        <p id="campus-id-hint" class="login-input-hint">
+          CID- followed by six digits. Try CID-116490 for an example student.
+        </p>
+        {% if message %}
+        <p
+          id="login-status"
+          class="login-status{% if invalid %} login-error{% endif %}"
+          role="status"
+        >
+          {{ message }}
+        </p>
+        {% endif %}
+        <button class="primary-button login-submit" type="submit">
+          Continue <span aria-hidden="true">→</span>
+        </button>
+      </form>
+      <div class="login-demo-note">
+        <span class="login-demo-symbol" aria-hidden="true">↗</span>
+        <div>
+          <h2>Just taking a look?</h2>
+          <p>
+            Enter <code>-1</code> above to open the demo. No student record is
+            loaded.
+          </p>
+        </div>
+      </div>
+      <p class="login-placeholder-note">
+        This prototype selects a synthetic student profile from the hackathon
+        dataset. It does not sign in to a real UMBC account.
+      </p>
+    </section>
+    <footer class="login-footer">
+      <span>Your future doesn’t have to be a straight line.</span
+      ><a
+        href="https://github.com/jasonpaluck/hackumbc-2026"
+        target="_blank"
+        rel="noopener noreferrer"
+        >About the track ↗</a
+      >
+    </footer>
+  </main>
+</div>
+{% endblock %}

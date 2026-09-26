@@ -1,4 +1,7 @@
-{% extends "base.html" %} {% block content %}
+{% extends "base.html" %} {% block scripts %}
+<script id="initial-profile" type="application/json">{{ initial_profile | default(none) | tojson }}</script>
+<script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
+{% endblock %} {% block content %}
 <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <symbol id="i-graph" viewBox="0 0 24 24">
     <path d="m8 7 8 4M8 17l8-4M6 9v6" />
@@ -127,6 +130,8 @@
       ><strong id="breadcrumb-current">Explore pathways</strong>
     </div>
     <div class="topbar-right">
+      <a class="inline-link" href="{{ url_for('demo') }}">Explore demo</a>
+      <form method="post" action="{{ url_for('logout') }}"><button class="inline-link" type="submit">{{ 'Change profile' if initial_profile else 'Choose a campus ID' }}</button></form>
       <span class="demo-badge"><span></span>Synthetic dataset</span
       ><button
         class="icon-button"

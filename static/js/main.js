@@ -4,9 +4,16 @@ const esc = (value) => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;
 const icon = name => `<svg class="icon" aria-hidden="true"><use href="#i-${name}"/></svg>`;
 const tags = (values, cls = '') => values.map(value => `<span class="tag ${cls}">${esc(value)}</span>`).join('');
 const money = value => value == null ? 'Unavailable' : new Intl.NumberFormat('en-US', {style:'currency',currency:'USD',maximumFractionDigits:0}).format(value);
+const initialProfile = JSON.parse($('#initial-profile')?.textContent || 'null');
 let options, graph, detail, recommendations, engagementData;
 let roles = {}, saved = new Set(), planned = new Set();
 let major = 'cs', selectedRole = '', student = '', family = 'all', season = 'Spring';
+if (initialProfile) {
+  major = initialProfile.major === 'Information Systems' ? 'is' : 'cs';
+  student = initialProfile.campus_id;
+  $('#major').value = major;
+  $('#major').disabled = true;
+}
 let currentView = 'explore', workspaceVersion = 0, detailVersion = 0, chatVersion = 0, toastTimer;
 let chatBusy = false;
 const pages = {
@@ -97,7 +104,7 @@ async function loadWorkspace(reloadStudents = false) {
   } catch (error) {
     if (version === workspaceVersion) setStatus(`Could not load pathways: ${error.message}`, true);
   } finally {
-    if (version === workspaceVersion) { $('#role-select').disabled = false; $('#student').disabled = false; }
+    if (version === workspaceVersion) { $('#role-select').disabled = false; $('#student').disabled = Boolean(initialProfile); }
   }
 }
 function renderGraph() {
@@ -167,6 +174,10 @@ function renderSaved() {
 }
 async function openRole(id) {
   if (!roles[id]) return;
+  if (initialProfile && roles[id].majors?.length && !roles[id].majors.includes(major)) {
+    notify('This role has no records for your major. Use Explore demo to browse other majors.');
+    return;
+  }
   selectedRole = id; family = 'all'; $('#family').value = 'all';
   const supported = roles[id].majors || [];
   let changedMajor = false;

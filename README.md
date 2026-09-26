@@ -16,10 +16,25 @@ python -m pip install -r requirements.txt
 python -m flask --app app:create_app run --debug
 ```
 
-Open http://127.0.0.1:5000. Stop with Ctrl+C. Debug mode is for local development.
+Open http://127.0.0.1:5000 for the campus-ID entry page. Enter a current student
+ID such as `CID-116490` to open that student's workspace, or `-1` to explore
+the demo. Stop with Ctrl+C. Debug mode is for local development.
 On Windows PowerShell, create the environment with `py -m venv .venv` and
 activate it with `.\.venv\Scripts\Activate.ps1` before running the last two commands.
 No Node.js, database, or frontend build step is needed.
+
+## Campus-ID entry
+
+`/` and `/login` accept IDs from `students_current.csv`. Valid IDs create a
+signed session and redirect to `/workspace`, with the student's major and
+profile selected. Unknown IDs show an error. `/workspace` redirects to login
+when no profile is selected. Use **Change profile** to clear the session.
+`/demo` remains public and allows browsing different majors and students.
+
+This selects a synthetic dataset profile; it is not real UMBC authentication.
+The dataset APIs remain public for the hackathon demo. Set `SECRET_KEY` in
+the environment or local `.env` to keep sessions across server restarts and
+worker processes; otherwise a temporary key is generated on startup.
 
 ## Connected screens
 
@@ -62,6 +77,7 @@ All Python code except `app.py` lives under `python/`:
 | `engagement.py` | Activity counts and example alumni histories |
 | `advisor.py` | Evidence-backed dataset answers |
 | `api.py` | Flask JSON routes and input validation |
+| `auth.py` | Campus-ID lookup and selected-profile session helpers |
 
 Source files remain in `data/`; the full dataset is loaded lazily once per server
 process. Restart Flask after replacing CSV files to reload the data.
