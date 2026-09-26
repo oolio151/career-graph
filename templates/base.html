@@ -1,17 +1,24 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}Career Graph{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#183e35" />
+    <meta
+      name="description"
+      content="Explore the connections between your degree, campus experiences, and your next career chapter."
+    />
+    <title>
+      {% block title %}Career Graph — Find your next chapter{% endblock %}
+    </title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
     <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
-    {% block head %}{% endblock %}
   </head>
   <body>
-    <main class="container">
-      {% block content %}{% endblock %}
-    </main>
-    {% block scripts %}{% endblock %}
+    <a class="skip-link" href="#main">Skip to content</a>
+    {% block content %}{% endblock %}
   </body>
 </html>
