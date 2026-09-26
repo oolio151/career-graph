@@ -71,12 +71,7 @@ function renderProfile(data) {
       <summary>Experience records (${profile.experiences.length})</summary>
       <ul class="record-list">${profile.experiences.map((item) => `<li><strong>${escapeHtml(item.experience_name)}</strong><span>${escapeHtml(item.experience_type)} · ${escapeHtml(item.organization)} · ${escapeHtml(item.term)}</span><span>${escapeHtml(item.outcome)}</span></li>`).join("") || "<li>No experience records yet.</li>"}</ul>
     </details>`;
-  major = profile.major === "Computer Science" ? "cs" : "is";
-  selectedRole = pathways[major][0];
-  filter = "all";
-  document.querySelector("#major").value = major;
-  updateFilters();
-  renderGraph();
+
 }
 
 function renderJobDetail(job, data) {
