@@ -1565,3 +1565,9 @@ body:has(#view-discover), body:has(#view-resume) {
 .school-entry .page-heading { border-radius:20px; }
 .school-entry .onboarding-card { box-shadow:0 6px 24px #20201e06; }
 .page-footer { color:var(--muted); border-top:1px solid var(--line); margin-top:36px; }
+
+.school-logo { display:flex; align-items:center; flex-shrink:0; padding-left:18px; margin-left:-10px; border-left:1px solid var(--line); }
+.school-logo img { display:block; height:48px; width:auto; object-fit:contain; }
+
+.footer-identity { display:flex; align-items:center; gap:24px; }
+.footer-identity .school-logo img { height:40px; }

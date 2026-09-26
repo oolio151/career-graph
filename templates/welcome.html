@@ -3,7 +3,7 @@
 {% block body_attributes %}class="school-entry" data-school=""{% endblock %}
 {% block scripts %}<script src="{{ url_for('static', filename='js/welcome.js', v=8) }}" defer></script>{% endblock %}
 {% block content %}
-<header class="site-header"><a class="brand" href="/">careergraph</a><span class="demo-label">Synthetic student demo</span></header>
+<header class="site-header"><a class="brand" href="/">careergraph</a><span class="school-logo"><img src="{{ url_for('static', filename='images/umbc.png') }}" alt="University of Maryland, Baltimore County" height="48"></span><span class="demo-label">Synthetic student demo</span></header>
 <main id="main" class="welcome-main">
   <section class="page-heading"><div><h1>A starting point.<br>A world of possibilities.</h1><p>Meet your profile. See where alumni went next.</p></div></section>
   <div class="welcome-grid">
