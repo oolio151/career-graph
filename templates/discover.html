@@ -1,0 +1,65 @@
+<div class="view" id="view-discover" hidden>
+  <section class="profile-strip" aria-label="Your student profile">
+    <div>
+      <p class="field-hint" id="profile-id">Your profile</p>
+      <h2 id="profile-major">Loading your profile…</h2>
+      <p id="profile-summary" class="supporting-copy"></p>
+    </div>
+    <div class="profile-actions">
+      <a class="secondary-button" href="/api/resume">Download resume</a>
+      <button type="button" class="inline-link" id="change-student">Change student and delete resume</button>
+    </div>
+  </section>
+
+  <section class="discover-section" aria-labelledby="cohort-title">
+    <div class="section-heading">
+      <div>
+        <h1 id="cohort-title">Where alumni went</h1>
+        <p id="cohort-lead">Bachelor’s graduates in your major. These are recorded outcomes, not open jobs.</p>
+      </div>
+    </div>
+    <fieldset class="cohort-filters">
+      <legend class="sr-only">Alumni comparison filters</legend>
+      <label><input type="checkbox" id="filter-track"> Same track</label>
+      <label><input type="checkbox" id="filter-gpa"> GPA within 0.25</label>
+      <label><input type="checkbox" id="filter-internships"> Similar internship count</label>
+    </fieldset>
+    <p class="field-hint" id="filter-explanation">GPA compares your current GPA with graduates’ final GPA. Internships match 0, 1, or 2 or more.</p>
+    <p id="discover-status" role="status" class="discover-status"></p>
+    <button id="discover-retry" class="secondary-button" type="button" hidden>Try again</button>
+
+    <div id="discover-results" hidden>
+      <div class="discover-layout">
+        <div class="field-panel">
+          <h3 id="field-list-title" class="panel-title">First jobs</h3>
+          <div id="field-list"></div>
+        </div>
+        <aside id="field-detail" class="role-detail discover-detail" aria-live="polite"></aside>
+      </div>
+      <details class="outcomes" id="outcomes-panel">
+        <summary id="outcomes-summary">All first destinations</summary>
+        <ul id="outcome-list" class="compact-list"></ul>
+        <p class="field-hint">Reported about six months after graduation. Unknown does not mean unemployed.</p>
+      </details>
+    </div>
+  </section>
+
+  <details class="profile-disclosure">
+    <summary>Your courses and experience</summary>
+    <div id="profile-content"></div>
+    <form id="replace-resume-form" class="replace-resume">
+      <label for="replace-resume">Replace your resume</label>
+      <input id="replace-resume" name="resume" type="file" accept=".pdf,.docx,.txt" required>
+      <button class="secondary-button" type="submit">Upload replacement</button>
+      <p id="resume-status" role="status" class="field-hint"></p>
+    </form>
+  </details>
+
+  <details class="methodology">
+    <summary>How these numbers work</summary>
+    <p>All records and employers are synthetic. The snapshot is September 15, 2026. These are historical patterns, not open jobs, placement odds, or evidence that an activity causes an outcome.</p>
+    <p>The group is bachelor’s graduates in your major. Master’s records are left out, because the file keeps only each person’s highest degree. “No response” stays in the graduate count as unknown, and is left out of the first-job shares.</p>
+    <p>Each graduate counts once. “What came next” uses only the second job, and only people who have one recorded. Recent graduates have had less time to move. Matching your current GPA or internship count to a graduate’s final record is an exploration, not a recommendation. Small groups can make a percentage swing on a handful of people.</p>
+    <p>Course skills are subjects covered by courses you passed, not a verified skill check. Your resume is stored on this computer and is not used in these results.</p>
+  </details>
+</div>

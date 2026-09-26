@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/welcome.js') }}" defer></script>{% endblock %}
+{% block content %}
+<header class="site-header"><a class="brand" href="/">careergraph</a><span class="demo-label">Synthetic student demo</span></header>
+<main id="main" class="welcome-main">
+  <section class="page-heading"><div><h1>A starting point.<br>A world of possibilities.</h1><p>Meet your profile. See where alumni went next.</p></div></section>
+  <div class="welcome-grid">
+    <section class="onboarding-card" aria-labelledby="welcome-title">
+      <h2 id="welcome-title">Start with your student ID.</h2>
+      <p class="supporting-copy">Use an ID from the demo’s current student dataset.</p>
+      <form id="entry-form">
+        <label for="campus-id">Student ID</label>
+        <div class="id-row"><input id="campus-id" name="campus_id" placeholder="CID-116490" pattern="[Cc][Ii][Dd]-[0-9]{6}" required autocomplete="off" aria-describedby="id-hint"><button type="button" class="secondary-button" id="find-student">Find student</button></div>
+        <p id="id-hint" class="field-hint">Try <button class="sample-id" type="button" data-sample="CID-116490">CID-116490</button> or <button class="sample-id" type="button" data-sample="CID-514009">CID-514009</button>.</p>
+        <div id="student-preview" class="student-preview" aria-live="polite" hidden></div>
+        <label class="upload-label" for="resume">Add your resume</label>
+        <input id="resume" name="resume" type="file" accept=".pdf,.docx,.txt" required aria-describedby="resume-hint">
+        <p id="resume-hint" class="field-hint">PDF, DOCX, or TXT · Up to 5 MB. Stored locally on this Mac. Not analyzed or sent to AI.</p>
+        <p id="entry-error" class="form-error" role="alert" hidden></p>
+        <button type="submit" class="primary-button" id="enter-app">Discover my possibilities</button>
+      </form>
+    </section>
+    <aside class="welcome-aside"><h2>Your story, connected.</h2><ul class="benefit-list"><li><strong>Your studies</strong><span>Major, GPA, courses, and graduation plans.</span></li><li><strong>Your experience</strong><span>Internships, activities, and certifications.</span></li><li><strong>Alumni paths</strong><span>First roles, next jobs, and the skills behind them.</span></li></ul><p class="field-hint">This demo uses fictional records, not a live university system. A student ID looks up a profile; it does not verify identity.</p></aside>
+  </div>
+</main>
+{% endblock %}
