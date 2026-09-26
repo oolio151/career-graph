@@ -82,7 +82,7 @@ class CareerData:
             for alum in sorted(members, key=lambda a: a["campus_id"]):
                 jobs = self.jobs[alum["campus_id"]]
                 if jobs:
-                    skill_counts.update(set(jobs[0]["role_skill_tags"].split("|")) - {"", NA})
+                    skill_counts.update(sorted(set(jobs[0]["role_skill_tags"].split("|")) - {"", NA}))
                 if len(jobs) > 1:
                     next_roles[jobs[1]["job_title"]] += 1
                     if len(examples) < 3:
@@ -101,3 +101,37 @@ class CareerData:
             "outcomes": [{"name": name, "count": count, "percent": percentage(count, len(cohort))} for name, count in sorted(outcomes.items(), key=lambda p: (-p[1], p[0]))],
             "fields": fields, "filters": filters, "small_sample": len(cohort) < 20,
             "sources": ["alumni.csv", "employment_history.csv"], "as_of": "2026-09-15"}
+
+    def coach_resume(self, campus_id, resume_text, message):
+        question = (message or "").strip()
+        if not question:
+            raise ValueError("Type a question first.")
+        if len(question) > 500:
+            raise ValueError("Keep the question under 500 characters.")
+        student = self.profile(campus_id)
+        paths = self.discover(campus_id, {})
+        field = paths["fields"][0] if paths["fields"] else None
+        readable = (resume_text or "").strip()
+        lowered = readable.lower()
+        missing = [skill for skill in (field["skills"] if field else []) if skill.lower() not in lowered][:3]
+        experience = next((item for item in student["experiences"] if item["experience_name"].lower() not in lowered), None)
+        if field:
+            lead = (f"{field['family']} is the most common first job among employed {paths['major']} graduates: "
+                    f"{field['percent']}% ({field['count']} of {paths['employed_count']}).")
+        else:
+            lead = f"No first jobs were recorded for employed {paths['major']} graduates in this comparison."
+        if not readable:
+            detail = "I can show the file, but I couldn’t read the words inside it. The suggestion below comes from your student record instead."
+        elif missing:
+            detail = "These skills come up in that first job and don’t appear in the text I could read: " + ", ".join(missing) + "."
+        else:
+            detail = "The first-job skills I checked already appear in the text I could read."
+        if experience:
+            detail += f" Your record lists {experience['experience_name']} at {experience['organization']}, and that name is not in the resume text."
+            suggestion = f"{experience['experience_name']} — {experience['organization']} ({experience['outcome']})"
+        elif missing:
+            suggestion = "Coursework covering " + ", ".join(missing)
+        else:
+            suggestion = None
+        reply = " ".join([lead, detail, "This uses synthetic alumni records on this computer, not an outside model."])
+        return {"reply": reply, "suggestion": suggestion}

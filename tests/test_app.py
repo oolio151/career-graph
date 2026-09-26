@@ -1,6 +1,7 @@
 import io
 import tempfile
 import unittest
+import zipfile
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -33,6 +34,8 @@ class AppTests(unittest.TestCase):
         self.assertEqual(self.client.get("/api/session").status_code, 401)
         self.assertEqual(self.client.get("/api/discover").status_code, 401)
         self.assertEqual(self.client.get("/api/resume").status_code, 401)
+        self.assertEqual(self.client.get("/api/resume/preview").status_code, 401)
+        self.assertEqual(self.client.post("/api/resume/chat", json={"message": "Hi"}, headers={"X-CSRF-Token": self.csrf}).status_code, 401)
         self.assertEqual(self.enroll().status_code, 200)
         self.assertIn(b'id="view-discover"', self.client.get("/app").data)
         current = self.client.get("/api/session").json
@@ -104,6 +107,35 @@ class AppTests(unittest.TestCase):
         expected = [a for a in rows if a["track"] == "Data Science" and 2.75 <= float(a["final_gpa"]) <= 3.25 and int(a["internship_count"]) == 1]
         self.assertEqual(filtered["cohort_count"], len(expected))
         self.assertLess(filtered["cohort_count"], d["cohort_count"])
+
+    def test_resume_preview_chat_and_original_file(self):
+        self.enroll()
+        preview = self.client.get("/api/resume/preview").json
+        self.assertEqual(preview["paragraphs"], ["Example Student", "Python and SQL"])
+        inline = self.client.get("/api/resume/file")
+        self.assertIn("inline", inline.headers["Content-Disposition"])
+        inline.close()
+        chat = self.client.post("/api/resume/chat", json={"message": "What should I add?"}, headers={"X-CSRF-Token": self.csrf})
+        self.assertEqual(chat.status_code, 200)
+        self.assertIn("Computer Science", chat.json["reply"])
+        self.assertIn("synthetic", chat.json["reply"])
+        self.assertTrue(chat.json["suggestion"])
+        self.assertEqual(self.client.post("/api/resume/chat", json={"message": "  "}, headers={"X-CSRF-Token": self.csrf}).status_code, 400)
+        self.assertIn(b'id="view-resume"', self.client.get("/app").data)
+        pdf = b"%PDF-1.1\n1 0 obj<</Length 44>>stream\nBT (Example Student) Tj [(Campus)-20(Editor) 250(Python)] TJ ET\nendstream\nendobj\n%%EOF\n"
+        self.enroll(content=pdf, filename="resume.pdf")
+        extracted = self.client.get("/api/resume/preview").json["text"]
+        self.assertIn("Example Student", extracted)
+        self.assertIn("CampusEditor Python", extracted)
+        shown = self.client.get("/api/resume/file")
+        self.assertEqual(shown.mimetype, "application/pdf")
+        shown.close()
+        document = io.BytesIO()
+        with zipfile.ZipFile(document, "w") as archive:
+            archive.writestr("[Content_Types].xml", "<Types></Types>")
+            archive.writestr("word/document.xml", '<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Campus Editor</w:t></w:r></w:p></w:body></w:document>')
+        self.enroll(content=document.getvalue(), filename="resume.docx")
+        self.assertEqual(self.client.get("/api/resume/preview").json["paragraphs"], ["Campus Editor"])
 
 
 class CalculationTests(unittest.TestCase):

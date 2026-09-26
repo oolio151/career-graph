@@ -186,6 +186,7 @@ function persist(key, values) {
 }
 const pages = {
   discover: ["Discover", "Your next chapter starts here.", "Explore paths taken by alumni in your major."],
+  resume: ["Resume", "Shape the resume.", "The file you uploaded, with a chat beside it."],
   explore: ["Explore", "Find your next step.", "Your degree. A few possibilities. A place to start."],
   engagement: ["Activities", "Learn by doing.", "Pick something you’d like to try."],
   advisor: ["Advisor", "Let’s figure it out.", "Ask about roles, skills, or getting started."],
@@ -205,9 +206,10 @@ function showView(view) {
   });
   $("#page-title").innerHTML = pages[view][1];
   $("#page-description").textContent = pages[view][2];
-  $(".page-heading").hidden = view === "discover";
-  $(".page-heading > .primary-button").hidden = view === "advisor" || view === "discover";
+  $(".page-heading").hidden = view === "discover" || view === "resume";
+  $(".page-heading > .primary-button").hidden = view === "advisor" || view === "discover" || view === "resume";
   if (view === "saved") renderSaved();
+  if (view === "resume" && typeof loadResume === "function") loadResume();
   history.replaceState(null, "", `#${view}`);
   window.scrollTo({ top: 0 });
   $("#main").focus({ preventScroll: true });

@@ -14,10 +14,11 @@
     </title>
     <link
       rel="stylesheet"
-      href="{{ url_for('static', filename='css/style.css') }}"
+      href="{{ url_for('static', filename='css/style.css', v=5) }}"
     />
-    {% block scripts %}<script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
-    <script src="{{ url_for('static', filename='js/discover.js') }}" defer></script>{% endblock %}
+    {% block scripts %}<script src="{{ url_for('static', filename='js/main.js', v=5) }}" defer></script>
+    <script src="{{ url_for('static', filename='js/discover.js', v=5) }}" defer></script>
+    <script src="{{ url_for('static', filename='js/resume.js', v=5) }}" defer></script>{% endblock %}
   </head>
   <body data-student-id="{{ student_id|default('') }}">
     <a class="skip-link" href="#main">Skip to content</a>

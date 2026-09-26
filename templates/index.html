@@ -60,6 +60,7 @@
   <a href="#discover" class="brand" aria-label="Career Graph home"><span class="brand-symbol"><svg class="icon" aria-hidden="true"><use href="#i-graph" /></svg></span>careergraph</a>
   <nav id="sidebar" aria-label="Main navigation">
     <button class="nav-item active" data-view="discover" aria-current="page">Discover</button>
+    <button class="nav-item" data-view="resume">Resume</button>
     <button class="nav-item" data-view="explore">Map demo</button>
     <button class="nav-item" data-view="engagement">Activities</button>
     <button class="nav-item" data-view="advisor">Advisor</button>
@@ -69,11 +70,12 @@
 </header>
 <div class="app-shell">
   <main id="main" tabindex="-1">
-    <section class="page-heading">
+    <section class="page-heading" hidden>
       <div><h1 id="page-title">Find your next step.</h1><p id="page-description">Your degree. A few possibilities. A place to start.</p></div>
       <button class="primary-button" data-view="advisor"><svg class="icon" aria-hidden="true"><use href="#i-spark" /></svg>Ask the advisor</button>
     </section>
     {% include "discover.html" %}
+    {% include "resume.html" %}
     <div class="view" id="view-explore" hidden>
       <div class="major-picker"><label for="major"><svg class="icon" aria-hidden="true"><use href="#i-cap" /></svg>I'm studying</label><select id="major"><option value="cs">Computer Science</option><option value="is">Information Systems</option></select><span class="demo-label">Example pathways</span></div>
       <section class="pathway-section" aria-labelledby="pathway-title">
