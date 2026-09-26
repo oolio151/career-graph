@@ -1409,6 +1409,10 @@ th { background: #f4eee5; position: sticky; top: 0; }
 .journey span, .journey small { display: block; color: var(--muted); font-size: 12px; margin-top: 4px; }
 .methodology { margin-top: 30px; }
 .resume-editor { display: grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); gap: 16px; min-height: calc(100vh - 150px); align-items: stretch; margin-bottom: 28px; }
+.resume-upload-prompt { margin: 28px; padding: 28px; border: 2px dashed var(--line); border-radius: 16px; background: #fffdfa; }
+.resume-upload-prompt h3 { margin: 0 0 8px; }
+.resume-upload-prompt label { display: block; font-size: 14px; font-weight: 600; margin: 18px 0 8px; }
+.resume-upload-prompt button { margin-top: 14px; }
 .resume-chat { display: flex; flex-direction: column; min-height: 0; background: white; border: 2px solid var(--line); border-radius: 22px; overflow: hidden; }
 .resume-chat-head { padding: 22px 20px 8px; }
 .resume-chat h1 { font-size: 26px; letter-spacing: -.6px; line-height: 1.2; }
