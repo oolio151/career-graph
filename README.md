@@ -32,6 +32,8 @@ python -m flask --app app:create_app run --debug
 ## Where to build
 
 - `app.py`: Flask application factory, page routes, and API endpoints.
+- `python/`: all other project Python code, including data loaders, services, and tests.
+- `AGENTS.md`: project conventions and dataset guidance.
 - `templates/base.html`: shared page layout.
 - `templates/index.html`: home page.
 - `static/css/style.css`: styles.
