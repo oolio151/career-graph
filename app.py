@@ -12,6 +12,7 @@ from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.utils import secure_filename
 
 from career_data import CareerData
+from python.discover_map import discover_map
 
 MAX_RESUME = 5 * 1024 * 1024
 
@@ -248,7 +249,7 @@ def create_app(test_config=None):
             return jsonify(error="Enter your student ID and resume to continue."), 401
         filters = {key: request.args.get(key) == "1" for key in ("track", "gpa", "internships")}
         try:
-            return jsonify(dataset.discover(current["campus_id"], filters))
+            return jsonify(discover_map(dataset, current["campus_id"], filters))
         except ValueError as error:
             return jsonify(error=str(error)), 400
 

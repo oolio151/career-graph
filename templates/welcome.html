@@ -1,5 +1,7 @@
 {% extends "base.html" %}
-{% block scripts %}<script src="{{ url_for('static', filename='js/welcome.js') }}" defer></script>{% endblock %}
+{% block theme_color %}#387e7d{% endblock %}
+{% block body_attributes %}class="school-entry" data-school=""{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/welcome.js', v=8) }}" defer></script>{% endblock %}
 {% block content %}
 <header class="site-header"><a class="brand" href="/">careergraph</a><span class="demo-label">Synthetic student demo</span></header>
 <main id="main" class="welcome-main">
@@ -9,6 +11,11 @@
       <h2 id="welcome-title">Start with your student ID.</h2>
       <p class="supporting-copy">Use an ID from the demo’s current student dataset.</p>
       <form id="entry-form">
+        <label for="school">Select your school</label>
+        <select id="school" name="school" required>
+          <option value="" disabled selected>Select your school</option>
+          <option value="umbc">University of Maryland, Baltimore County</option>
+        </select>
         <label for="campus-id">Student ID</label>
         <div class="id-row"><input id="campus-id" name="campus_id" placeholder="CID-116490" pattern="[Cc][Ii][Dd]-[0-9]{6}" required autocomplete="off" aria-describedby="id-hint"><button type="button" class="secondary-button" id="find-student">Find student</button></div>
         <p id="id-hint" class="field-hint">Try <button class="sample-id" type="button" data-sample="CID-116490">CID-116490</button> or <button class="sample-id" type="button" data-sample="CID-514009">CID-514009</button>.</p>

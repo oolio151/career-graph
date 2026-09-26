@@ -29,13 +29,14 @@
     <button id="discover-retry" class="secondary-button" type="button" hidden>Try again</button>
 
     <div id="discover-results" hidden>
-      <div class="discover-layout">
-        <div class="field-panel">
-          <h3 id="field-list-title" class="panel-title">First jobs</h3>
-          <div id="field-list"></div>
+      <div class="graph-panel alumni-map-panel">
+        <div class="graph-toolbar"><span>Top 5 first jobs by alumni count. Select a job to explore its story.</span></div>
+        <div class="alumni-map-scroll" tabindex="0" aria-label="Career pathway map">
+          <div id="alumni-map"></div>
         </div>
-        <aside id="field-detail" class="role-detail discover-detail" aria-live="polite"></aside>
+        <p class="graph-footer">Showing up to five most common jobs per column. Percentages use all relevant alumni, including jobs not shown. Select a node for details below.</p>
       </div>
+      <section id="field-detail" class="alumni-job-detail" aria-live="polite" aria-label="Selected job details"></section>
       <details class="outcomes" id="outcomes-panel">
         <summary id="outcomes-summary">All first destinations</summary>
         <ul id="outcome-list" class="compact-list"></ul>

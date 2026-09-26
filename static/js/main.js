@@ -204,7 +204,6 @@ function showView(view) {
   $("#page-title").innerHTML = pages[view][1];
   $("#page-description").textContent = pages[view][2];
   $(".page-heading").hidden = view === "discover" || view === "resume";
-  $(".page-heading > .primary-button").hidden = view === "discover" || view === "resume";
   if (view === "resume" && typeof loadResume === "function") loadResume();
   history.replaceState(null, "", `#${view}`);
   window.scrollTo({ top: 0 });

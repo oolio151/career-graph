@@ -10,6 +10,7 @@ const countLabel = (value) => Number(value).toLocaleString("en-US");
 let studentProfile;
 let discoverData;
 let selectedFamily = "";
+let selectedNextJob = "";
 let requestVersion = 0;
 
 async function api(url, options) {
@@ -78,78 +79,65 @@ function renderProfile(data) {
   renderGraph();
 }
 
-function fieldButton(field, employedCount) {
-  const selected = field.family === selectedFamily;
-  return `<button type="button" class="field-row${selected ? " selected" : ""}" data-family="${escapeHtml(field.family)}" aria-pressed="${selected}" aria-label="${escapeHtml(field.family)}, ${field.percent} percent, ${countLabel(field.count)} of ${countLabel(employedCount)} employed graduates">
-    <span class="field-name">${escapeHtml(field.family)}</span>
-    <span class="field-share">${field.percent}%</span>
-    <span class="field-sample">${countLabel(field.count)} of ${countLabel(employedCount)}</span>
-    <span class="percentage-track" aria-hidden="true"><span style="width:${Math.min(field.percent, 100)}%"></span></span>
-  </button>`;
-}
-
-function renderDetail(field, data) {
+function renderJobDetail(job, data) {
   const panel = document.querySelector("#field-detail");
-  if (!field) {
-    panel.hidden = true;
-    panel.innerHTML = "";
-    return;
-  }
+  if (!job) { panel.hidden = true; return; }
   panel.hidden = false;
-  const covered = field.skills.filter((skill) => studentProfile.course_skills.includes(skill));
-  const uncovered = field.skills.filter((skill) => !covered.includes(skill));
-  const skillTags = [
-    ...covered.map((skill) => `<span class="tag covered">${escapeHtml(skill)}</span>`),
-    ...uncovered.map((skill) => `<span class="tag">${escapeHtml(skill)}</span>`),
-  ].join("");
-  const nextBlock = field.with_next_job
-    ? `<p class="detail-description">${countLabel(field.with_next_job)} of ${countLabel(field.count)} have a second job recorded. Shares below use those ${countLabel(field.with_next_job)} people.</p>
-       <ul class="compact-list">${field.next_roles.map((role) => `<li><span>${escapeHtml(role.title)}</span><strong>${role.percent}% <small>${countLabel(role.count)} of ${countLabel(field.with_next_job)}</small></strong></li>`).join("")}</ul>`
-    : `<p class="detail-description">No second jobs recorded in this group yet.</p>`;
-  const journeys = field.examples.length
-    ? `<h4>A few recorded journeys</h4><p class="field-hint">Up to three people, chosen by record ID. Employers are fictional.</p>${field.examples.map((example) => `<details class="journey"><summary>${escapeHtml(example.campus_id)} · Class of ${escapeHtml(example.graduation_year)}</summary><ol>${example.jobs.map((job) => `<li><strong>${escapeHtml(job.job_title)}</strong><span>${escapeHtml(job.employer)}</span><small>${escapeHtml(job.start_date)} → ${escapeHtml(job.end_date || "Current at Sep 2026")} · ${escapeHtml(job.change_type)}</small></li>`).join("")}</ol></details>`).join("")}`
-    : "";
-  panel.innerHTML = `
-    <p class="role-type">First job after a ${escapeHtml(data.major)} bachelor’s</p>
-    <h3>${escapeHtml(field.family)}</h3>
-    <p class="share-figure"><strong>${field.percent}%</strong><span>${countLabel(field.count)} of ${countLabel(data.employed_count)} who reported a first job</span></p>
-    <p class="detail-description">Common titles: ${joined(field.titles)}.</p>
-    <h4>How they found it</h4>
-    <ul class="compact-list">${field.routes.map((route) => `<li><span>${escapeHtml(route.name)}</span><strong>${route.percent}% <small>${countLabel(route.count)} of ${countLabel(field.count)}</small></strong></li>`).join("")}</ul>
-    <p class="field-hint">The three most common routes in this field.</p>
-    <h4>What came next</h4>
-    ${nextBlock}
-    <h4>Skills these jobs asked for</h4>
-    <div class="tags">${skillTags}</div>
-    <p class="field-hint">${covered.length ? `Highlighted skills also appear in courses you passed: ${joined(covered)}.` : "None of these appear in courses you passed yet."}</p>
-    ${journeys}`;
+  const next = job.next_roles.find(role => role.title === selectedNextJob);
+  const covered = job.skills.filter(skill => studentProfile.course_skills.includes(skill));
+  panel.innerHTML = next
+    ? `<p class="role-type">Recorded second job after ${escapeHtml(job.title)}</p>
+       <h2>${escapeHtml(next.title)}</h2>
+       <p class="share-figure"><strong>${next.percent}%</strong><span>${next.count} of ${job.with_next_job} alumni with a second job recorded after ${escapeHtml(job.title)}.</span></p>
+       <p class="field-hint">These are observed transitions, not predictions. Select a first-job node to see its hiring routes and skills.</p>`
+    : `<div><p class="role-type">Reported first job</p><h2>${escapeHtml(job.title)}</h2>
+       <p class="share-figure"><strong>${job.percent}%</strong><span>${job.count} of ${data.employed_count} graduates who reported a first job.</span></p>
+       <p class="field-hint">${job.with_next_job} of these ${job.count} alumni have a second job recorded.</p></div>
+       <div><h3>How they found it</h3><ul class="compact-list">${job.routes.map(route => `<li><span>${escapeHtml(route.name)}</span><strong>${route.percent}% <small>${route.count} of ${job.count}</small></strong></li>`).join("")}</ul></div>
+       <div><h3>Skills these jobs asked for</h3><div class="tags">${job.skills.map(skill => `<span class="tag ${covered.includes(skill) ? "covered" : ""}">${escapeHtml(skill)}</span>`).join("") || "No skills recorded."}</div>
+       <p class="field-hint">Highlighted skills appear in your passed courses; they are not verified proficiency.</p></div>`;
 }
 
-function renderDiscover(data, scrollDetail) {
+function renderAlumniMap(data) {
+  const jobs = data.first_jobs.slice(0, 5);
+  const chosen = jobs.find(job => job.title === selectedFamily);
+  const next = chosen?.next_roles.slice(0, 5) || [];
+  const height = Math.max(390, 65 + Math.max(jobs.length, next.length) * 86);
+  const center = height / 2;
+  const y = index => 85 + index * 86;
+  const paths = jobs.map((job, i) => `<path class="${job.title === selectedFamily ? "active" : ""}" d="M190 ${center} C240 ${center} 260 ${y(i)} 310 ${y(i)}"/>`);
+  if (chosen) {
+    const source = y(jobs.indexOf(chosen));
+    next.forEach((role, i) => paths.push(`<path class="active" d="M540 ${source} C600 ${source} 620 ${y(i)} 680 ${y(i)}"/>`));
+  }
+  document.querySelector("#alumni-map").style.height = height + "px";
+  document.querySelector("#alumni-map").innerHTML = `
+    <div class="alumni-column-label" style="left:20px">Your degree</div>
+    <div class="alumni-column-label" style="left:310px">Started here</div>
+    <div class="alumni-column-label" style="left:680px">Went next</div>
+    <svg class="alumni-edges" width="940" height="${height}" aria-hidden="true">${paths.join("")}</svg>
+    <div class="alumni-root" style="top:${center - 55}px">${escapeHtml(data.major)}<small>Bachelor of Science</small></div>
+    ${jobs.map((job, i) => `<button class="alumni-node ${job.title === selectedFamily && !selectedNextJob ? "selected" : ""}" style="left:310px;top:${y(i)-32}px" data-first-job="${escapeHtml(job.title)}" aria-pressed="${job.title === selectedFamily && !selectedNextJob}"><strong>${escapeHtml(job.title)}</strong><span>${job.percent}% · ${job.count} first jobs</span></button>`).join("")}
+    ${next.map((role, i) => `<button class="alumni-node ${role.title === selectedNextJob ? "selected" : ""}" style="left:680px;top:${y(i)-32}px" data-next-job="${escapeHtml(role.title)}" aria-pressed="${role.title === selectedNextJob}"><strong>${escapeHtml(role.title)}</strong><span>${role.count} recorded transitions</span></button>`).join("")}
+    ${!next.length ? '<p class="alumni-no-next">No second jobs recorded for this first job.</p>' : ""}`;
+}
+
+function renderDiscover(data) {
   discoverData = data;
-  const results = document.querySelector("#discover-results");
   const years = data.graduation_years;
   document.querySelector("#cohort-title").textContent = `Where ${data.major} graduates went`;
   document.querySelector("#cohort-lead").textContent = years.length
     ? `Bachelor’s graduates, ${years[0]}–${years.at(-1)}. Recorded outcomes from synthetic alumni, not open jobs.`
     : "No bachelor’s graduates match these filters.";
-  document.querySelector("#field-list-title").textContent = data.employed_count
-    ? `First job · ${countLabel(data.employed_count)} people`
-    : "First job";
-  document.querySelector("#outcomes-summary").textContent =
-    `All first destinations · ${countLabel(data.cohort_count)} graduates`;
-  document.querySelector("#outcome-list").innerHTML = data.outcomes.map((outcome) =>
-    `<li><span>${escapeHtml(outcome.name === "No Response" ? "No response (unknown)" : outcome.name)}</span><strong>${outcome.percent}% <small>${countLabel(outcome.count)} of ${countLabel(data.cohort_count)}</small></strong></li>`,
-  ).join("");
-  if (!data.fields.some((field) => field.family === selectedFamily))
-    selectedFamily = data.fields[0]?.family || "";
-  document.querySelector("#field-list").innerHTML = data.fields.length
-    ? data.fields.map((field) => fieldButton(field, data.employed_count)).join("")
-    : `<p class="empty-fields">No first jobs were reported in this group.</p>`;
-  renderDetail(data.fields.find((field) => field.family === selectedFamily), data);
-  results.hidden = false;
-  if (scrollDetail && window.matchMedia("(max-width: 950px)").matches)
-    document.querySelector("#field-detail").scrollIntoView({ block: "nearest" });
+  document.querySelector("#outcomes-summary").textContent = `All first destinations · ${data.cohort_count} graduates`;
+  document.querySelector("#outcome-list").innerHTML = data.outcomes.map(outcome =>
+    `<li><span>${escapeHtml(outcome.name === "No Response" ? "No response (unknown)" : outcome.name)}</span><strong>${outcome.percent}% <small>${outcome.count} of ${data.cohort_count}</small></strong></li>`).join("");
+  if (!data.first_jobs.slice(0, 5).some(job => job.title === selectedFamily)) selectedFamily = data.first_jobs[0]?.title || "";
+  const job = data.first_jobs.find(job => job.title === selectedFamily);
+  if (!job?.next_roles.slice(0, 5).some(role => role.title === selectedNextJob)) selectedNextJob = "";
+  renderAlumniMap(data);
+  renderJobDetail(job, data);
+  document.querySelector("#discover-results").hidden = false;
 }
 
 async function loadDiscover() {
@@ -184,12 +172,17 @@ async function loadDiscover() {
   }
 }
 
-document.querySelector("#field-list").addEventListener("click", (event) => {
-  const button = event.target.closest("[data-family]");
+document.querySelector("#alumni-map").addEventListener("click", event => {
+  const button = event.target.closest("button");
   if (!button || !discoverData) return;
-  selectedFamily = button.dataset.family;
-  renderDiscover(discoverData, true);
-  document.querySelector('#field-list [aria-pressed="true"]')?.focus({ preventScroll: true });
+  if (button.dataset.firstJob) {
+    selectedFamily = button.dataset.firstJob;
+    selectedNextJob = "";
+  } else if (button.dataset.nextJob) {
+    selectedNextJob = button.dataset.nextJob;
+  } else return;
+  renderDiscover(discoverData);
+  document.querySelector('#alumni-map [aria-pressed="true"]')?.focus({preventScroll:true});
 });
 
 for (const name of ["track", "gpa", "internships"])
