@@ -66,7 +66,8 @@ def bad_input(error):
 
 @api.errorhandler(AdvisorUnavailable)
 def provider_unavailable(error):
-    return {'error': str(error), 'mode': 'gemini'}, 503
+    return {'error': str(error), 'mode': 'gemini',
+            'code': error.code, 'retryable': error.retryable}, 503
 
 
 @api.get('/advisor/status')

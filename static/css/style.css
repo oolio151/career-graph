@@ -2724,3 +2724,71 @@ dialog .inline-link {
 #resume-lines {
   white-space: pre-wrap;
 }
+
+/* Readable advisor replies, using the existing workspace typefaces. */
+.chat-messages .message {
+  font-size: 14px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.chat-messages .message.advisor {
+  white-space: normal;
+  color: #435a3c;
+}
+.message.advisor .message-label {
+  font-size: 9px;
+  margin-bottom: 9px;
+}
+.message-content {
+  font-family: "DM Sans", sans-serif;
+  white-space: normal;
+}
+.message-content p + p,
+.message-content p + ul,
+.message-content p + ol,
+.message-content ul + p,
+.message-content ol + p {
+  margin-top: 10px;
+}
+.message-content h3 {
+  font-family: Manrope, "DM Sans", sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  line-height: 1.5;
+  margin: 16px 0 7px;
+  color: #284b38;
+}
+.message-content > :first-child {
+  margin-top: 0;
+}
+.message-content strong {
+  font-weight: 700;
+  color: #284b38;
+}
+.message-content ul,
+.message-content ol {
+  margin: 8px 0;
+  padding-left: 22px;
+}
+.message-content li + li {
+  margin-top: 7px;
+}
+.message-content li::marker {
+  color: #6a8756;
+  font-weight: 600;
+}
+.message-content code {
+  font-family: ui-monospace, monospace;
+  font-size: 0.88em;
+  background: #e3ecd9;
+  border-radius: 4px;
+  padding: 2px 5px;
+}
+.chat-citation {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  color: #6d815c;
+  vertical-align: baseline;
+}

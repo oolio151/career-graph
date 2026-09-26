@@ -261,10 +261,10 @@ The response contains:
 
 | Field     | Contents                                                                                      |
 | --------- | --------------------------------------------------------------------------------------------- |
-| `answer`  | Plain-text generated reply, or deterministic dataset response                                 |
-| `mode`    | `gemini` or `dataset`                                                                         |
+| `answer`  | Reply text with optional lightweight Markdown                                 |
+| `mode`    | `gemini`, `dataset`, or local `conversation`                                                                         |
 | `model`   | Configured model ID, present for Gemini                                                       |
-| `role_id` | Resolved question target; legacy dataset no-record replies may omit it                        |
+| `role_id` | Resolved question target; local conversation and dataset no-record replies may omit it                        |
 | `sources` | Objects with `file`, `record_ids`, `count`; Gemini also supplies `id` (e.g. `S1`) and `scope` |
 
 Gemini is instructed to cite source IDs beside dataset claims. The supplied source
@@ -279,6 +279,21 @@ and ignores history, preferences, and salary filters. A configured provider erro
 returns `503` with a safe message instead of silently falling back. The backend
 stores no conversation history; clients supply recent exchanges with each request.
 Google receives the question, recent history, and selected synthetic context.
+
+Transient Gemini responses (`408`, `429`, and `5xx`) and network timeouts are retried
+up to three times with exponential backoff and jitter, respecting `Retry-After` when
+present. The server bounds the retry window; invalid requests, access failures,
+billing failures, and unavailable model names fail immediately. The browser allows
+enough time for those retries and preserves the question when a request fails.
+
+Chat `answer` text may contain lightweight Markdown: bold, italics, headings,
+numbered/bulleted lists, inline code, and source references. Treat it as untrusted;
+the bundled renderer creates DOM text nodes and permits no model-authored HTML.
+Exact greetings/thanks/farewells return `mode: conversation`, an empty `sources`
+list, and a short local answer, without calling Gemini or building dataset context.
+A missing role returns a short role-selection prompt in the same mode. Normal
+Gemini replies target 40–100 words; detailed requests may use up to 250 words.
+These are prompt instructions, not hard truncation limits.
 
 ## Resume Studio endpoints
 

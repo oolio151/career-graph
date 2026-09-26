@@ -29,7 +29,7 @@ if you already have one, then set:
 
 ```dotenv
 GEMINI_API_KEY=your_google_ai_studio_key
-GEMINI_MODEL=gemini-3.8-flash
+GEMINI_MODEL=gemini-3-flash-preview
 ```
 
 Restart Flask after changing these settings. `create_app()` loads this file;
@@ -103,6 +103,13 @@ Role salary summaries default to the latest available job start year, use nomina
 base pay, and show the median and 25th/75th percentiles with record counts.
 Skill frequencies use all matching role records across years; salary filters do
 not change those frequencies. These synthetic figures are not market forecasts.
+
+Chat replies default to roughly 40–100 words, with more detail only when requested.
+Exact greetings, thanks, and farewells receive brief local responses without a Gemini
+call or career-context construction; these are labeled as advisor messages, not Gemini.
+The chat safely renders a small Markdown subset (bold, italics, headings, lists, inline
+code, and source references) using DOM text nodes rather than model-provided HTML.
+Resume Studio keeps its separate, longer editing instructions and plain-text display.
 
 ## Resume Studio
 

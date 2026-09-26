@@ -1,6 +1,11 @@
 """Server-only Gemini REST transport. No credentials enter browser responses."""
 import json
+import random
 import re
+import time
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
+from http.client import HTTPException
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -9,6 +14,94 @@ from flask import current_app
 
 class AdvisorUnavailable(Exception):
     """A deliberately public, credential-free provider failure."""
+
+    def __init__(self, message, *, code='provider_unavailable', retryable=False):
+        super().__init__(message)
+        self.code = code
+        self.retryable = retryable
+
+
+MAX_ATTEMPTS = 3
+RETRY_WINDOW_SECONDS = 70
+ATTEMPT_TIMEOUT_SECONDS = 40
+TRANSIENT_HTTP_CODES = {408, 429, 500, 502, 503, 504}
+
+
+def retry_after_seconds(value):
+    """Respect numeric and HTTP-date Retry-After headers without echoing them."""
+    if not value:
+        return 0
+    try:
+        return max(0, int(value))
+    except (ValueError, TypeError):
+        try:
+            date = parsedate_to_datetime(value)
+            if date.tzinfo is None:
+                date = date.replace(tzinfo=timezone.utc)
+            return max(0, (date - datetime.now(timezone.utc)).total_seconds())
+        except (ValueError, TypeError, OverflowError):
+            return 0
+
+
+def request_content(request):
+    """Retry transient transport failures within a bounded scheduling window."""
+    deadline = time.monotonic() + RETRY_WINDOW_SECONDS
+    failure = AdvisorUnavailable('Gemini could not be reached. Please try again shortly.',
+                                 code='network_error', retryable=True)
+    for attempt in range(MAX_ATTEMPTS):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        retry_after = 0
+        try:
+            with urlopen(request, timeout=min(ATTEMPT_TIMEOUT_SECONDS, remaining)) as response:
+                return json.load(response)
+        except HTTPError as error:
+            status = error.code
+            retry_after = retry_after_seconds(error.headers.get('Retry-After'))
+            error.close()
+            # Log only status and attempt, never exception bodies, URLs, or keys.
+            current_app.logger.warning('Gemini HTTP %s on attempt %s/%s', status, attempt + 1, MAX_ATTEMPTS)
+            if status == 429:
+                failure = AdvisorUnavailable(
+                    'Gemini’s rate limit or quota has been reached. Wait a little before retrying; if it persists, check the project quota.',
+                    code='rate_limited', retryable=True)
+            elif status in TRANSIENT_HTTP_CODES:
+                failure = AdvisorUnavailable(
+                    'Gemini is still temporarily unavailable. Please try again shortly.',
+                    code='temporarily_unavailable', retryable=True)
+            elif status in {401, 403}:
+                raise AdvisorUnavailable('Gemini access was denied. Check the server API key and project permissions.',
+                                         code='access_denied') from None
+            elif status == 402:
+                raise AdvisorUnavailable('Gemini requires available billing credits. Check the Google project’s billing settings.',
+                                         code='billing_required') from None
+            elif status == 404:
+                raise AdvisorUnavailable('The configured Gemini model is unavailable for this project. Verify GEMINI_MODEL is a supported model ID (Gemini 3 Flash uses gemini-3-flash-preview).',
+                                         code='model_unavailable') from None
+            elif status == 400:
+                raise AdvisorUnavailable('Gemini rejected the request. Check the server model configuration and API key.',
+                                         code='invalid_request') from None
+            else:
+                raise AdvisorUnavailable('Gemini could not accept this request. Check the server logs for its HTTP status.',
+                                         code='provider_rejected') from None
+        except (URLError, TimeoutError, OSError, HTTPException):
+            current_app.logger.warning('Gemini transport failure on attempt %s/%s', attempt + 1, MAX_ATTEMPTS)
+            failure = AdvisorUnavailable('Gemini could not be reached. Please try again shortly.',
+                                         code='network_error', retryable=True)
+        except (ValueError, UnicodeError):
+            raise AdvisorUnavailable('Gemini returned an unreadable reply. Please try again.',
+                                     code='invalid_response') from None
+
+        if attempt + 1 == MAX_ATTEMPTS:
+            break
+        delay = max(retry_after, 2 ** attempt + random.uniform(0, 0.5))
+        # Leave at least five seconds for another attempt. Never shorten a
+        # provider's requested wait just to fit our retry window.
+        if delay + 5 >= deadline - time.monotonic():
+            break
+        time.sleep(delay)
+    raise failure from None
 
 
 def advisor_status():
@@ -40,20 +133,7 @@ def generate(system_instruction, context, history, question):
         headers={'Content-Type': 'application/json',
                  'x-goog-api-key': current_app.config['GEMINI_API_KEY'].strip()},
     )
-    try:
-        with urlopen(request, timeout=40) as response:
-            data = json.load(response)
-    except HTTPError as error:
-        # Do not log or forward Google's error body, request, or credentials.
-        if error.code == 429:
-            message = 'Gemini is rate-limited or its quota is exhausted. Try again later.'
-        elif error.code in {400, 401, 403, 404}:
-            message = 'Gemini could not accept this request. Check the server API key, model, and project access.'
-        else:
-            message = 'Gemini is temporarily unavailable. Please try again.'
-        raise AdvisorUnavailable(message) from None
-    except (URLError, TimeoutError, OSError, ValueError):
-        raise AdvisorUnavailable('Gemini could not be reached or returned an unreadable reply. Please try again.') from None
+    data = request_content(request)
     if not isinstance(data, dict):
         raise AdvisorUnavailable('Gemini returned an unreadable reply. Please try again.')
     candidates = data.get('candidates') or []

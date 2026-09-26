@@ -1,5 +1,6 @@
 {% extends "base.html" %} {% block scripts %}
 <script id="initial-profile" type="application/json">{{ initial_profile | default(none) | tojson }}</script>
+<script src="{{ url_for('static', filename='js/chat-format.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
 {% endblock %} {% block content %}
 {% include '_workspace_sidebar.html' %}

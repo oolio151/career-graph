@@ -104,7 +104,7 @@ async function runRequest(path, options, message) {
   controller?.abort();
   const activeController = new AbortController();
   controller = activeController;
-  const timeout = setTimeout(() => activeController.abort(), 60000);
+  const timeout = setTimeout(() => activeController.abort(), path === '/api/resume/review' ? 90000 : 60000);
   setBusy(true, message);
   status("");
   try {

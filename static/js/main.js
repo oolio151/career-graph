@@ -37,7 +37,7 @@ function persist(key, values) {
 async function api(path, params = {}, body) {
   const url = `/api/${path}${Object.keys(params).length ? '?' + new URLSearchParams(params) : ''}`;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), path === 'advisor' ? 50000 : 30000);
+  const timeout = setTimeout(() => controller.abort(), path === 'advisor' ? 90000 : 30000);
   try {
     const response = await fetch(url, {signal:controller.signal, ...(body ? {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)} : {})});
     const data = await response.json().catch(() => ({}));
@@ -189,13 +189,19 @@ function addMessage(text, sender, sources = [], mode = advisorMode) {
   const message = document.createElement('div'); message.className = `message ${sender}`;
   const label = document.createElement('span'); label.className = 'message-label';
   label.textContent = sender === 'user' ? 'YOU' : mode === 'gemini' ? 'ADVISOR · GEMINI' : mode === 'dataset' ? 'ADVISOR · DATASET ANSWER' : 'ADVISOR';
-  message.append(label, document.createTextNode(text));
+  message.append(label);
+  if (sender === 'user') message.append(document.createTextNode(text));
+  else message.append(renderChatMarkdown(text));
   if (sources.length) {
     const sourceBlock = document.createElement('details'); sourceBlock.className = 'sources';
     sourceBlock.innerHTML = `<summary>${mode === 'gemini' ? 'Dataset context supplied to Gemini' : 'Supporting dataset records'}</summary><ul>${sources.map(s => `<li>${s.id ? '[' + esc(s.id) + '] ' : ''}${esc(s.file)} · ${s.count} records/participants. ${esc(s.scope || '')} Example IDs: ${esc(s.record_ids.join(', ') || 'None')}</li>`).join('')}</ul>`;
     message.append(sourceBlock);
   }
-  $('#chat-messages').append(message); $('#chat-messages').scrollTop = $('#chat-messages').scrollHeight;
+  const log = $('#chat-messages');
+  log.append(message);
+  // Start at the answer's beginning instead of jumping past it to the sources.
+  log.scrollTop = sender === 'user' ? log.scrollHeight
+    : log.scrollTop + message.getBoundingClientRect().top - log.getBoundingClientRect().top - 20;
 }
 function setChatBusy(busy) {
   chatBusy = busy;
@@ -208,10 +214,10 @@ function setChatBusy(busy) {
 }
 function welcomeMessage() {
   return advisorMode === 'gemini'
-    ? 'Ask about skills, courses, alumni experiences, or salaries. Gemini uses the selected synthetic profile, computed dataset context, saved interests, and recent conversation. Replies can be mistaken; check the supplied records.'
+    ? 'Hi! What would you like help with?'
     : advisorMode === 'dataset'
-    ? 'Ask about skills, courses, alumni experiences, or salaries for the selected role. Gemini is not configured, so replies use the existing dataset-only advisor.'
-    : 'Select a career role and ask about your next step. Checking advisor configuration…';
+    ? 'Hi! I can help you explore the dataset. What would you like to know?'
+    : 'Hi! What would you like help with?';
 }
 async function loadAdvisorStatus() {
   try {
@@ -240,7 +246,6 @@ function rememberTurn(question, response) {
 }
 async function sendQuestion(question) {
   const value = question.trim().slice(0,500); if (!value || chatBusy) return;
-  if (!selectedRole) { notify('Choose a career role first.'); return; }
   if (chatScope !== JSON.stringify([major, student])) resetChat();
   showView('advisor'); addMessage(value,'user'); $('#chat-input').value = '';
   const version = ++chatVersion; setChatBusy(true);
@@ -252,11 +257,16 @@ async function sendQuestion(question) {
     });
     if (version === chatVersion) {
       addMessage(result.answer,'advisor',result.sources,result.mode);
-      if (result.mode === 'gemini') rememberTurn(value, result.answer);
+      if (result.mode === 'gemini' || result.mode === 'conversation') rememberTurn(value, result.answer);
     }
   } catch (error) {
     if (version === chatVersion) {
-      addMessage(`Could not retrieve an answer: ${error.name === 'AbortError' ? 'The request timed out' : error.message}. Please try again.`, 'advisor', [], 'error');
+      const message = error.name === 'AbortError'
+        ? 'The reply took too long. Your question is still here; please try again.'
+        : error instanceof TypeError
+        ? 'Could not reach the server. Check your connection and try again.'
+        : error.message || 'Could not retrieve an answer. Please try again.';
+      addMessage(message, 'advisor', [], 'error');
       $('#chat-input').value = value;
     }
   } finally { if (version === chatVersion) setChatBusy(false); }
