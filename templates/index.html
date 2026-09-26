@@ -1,11 +1,30 @@
 {% extends "base.html" %}
-
 {% block content %}
-  <section class="card" aria-labelledby="page-title">
-    <p class="eyebrow">hackUMBC 2026 · DoIT track</p>
-    <h1 id="page-title">Career Graph</h1>
-    <p>Your Flask starter is ready. Build something great.</p>
-    <button id="check-api" type="button" data-url="{{ url_for('health') }}">Check backend connection</button>
-    <p id="api-status" role="status" aria-live="polite">Ready to connect.</p>
-  </section>
+<header class="topbar"><a class="brand" href="/" aria-label="Career Graph home"><span class="brand-icon">⌘</span>career<span>graph</span></a><span class="event">UMBC · YOUR NEXT CHAPTER</span><span class="snapshot">● September 2026 dataset</span></header>
+<section class="intro"><p class="eyebrow">CONNECT WHAT YOU LEARN TO WHAT COMES NEXT</p><h1>Your future has connections.<br><span>Let’s find yours.</span></h1><p>Explore how your courses and experiences connect to a career.<br>See what you’ve covered, what’s ahead, and where to go next.</p></section>
+<form id="controls" class="controls" aria-label="Pathway options">
+<label class="student-control">01 / YOUR STARTING POINT<select id="student" required aria-label="Student profile"><option>Loading students…</option></select></label>
+<span class="control-arrow" aria-hidden="true">→</span>
+<label>02 / YOUR DIRECTION<select id="career" required aria-label="Target career"><option>Loading careers…</option></select></label>
+<label class="season-control">PLAN FOR<select id="season" aria-label="Planning season"><option>Spring</option><option>Summer</option><option>Fall</option></select></label>
+<button class="primary" id="explore" type="submit" disabled>Explore pathway ↗</button>
+</form>
+<p id="app-status" role="status" aria-live="polite">Loading the career dataset…</p>
+<button id="retry" type="button" class="text-button" hidden>Retry loading data ↗</button>
+<div id="results" hidden>
+<section id="profile" class="profile" aria-label="Student summary"></section>
+<div class="workspace">
+<section class="graph-panel panel"><div class="section-heading"><div><p class="eyebrow">THE BIG PICTURE</p><h2>Your career connections</h2></div><span class="tag">Interactive map</span></div>
+<div class="legend"><span><i class="dot completed"></i>Completed</span><span><i class="dot progress"></i>In progress</span><span><i class="dot suggested"></i>Suggested</span><span><i class="dot gap"></i>Skill gap</span></div>
+<p class="map-help">Select a course, skill, or career to explore its connections. Scroll sideways on smaller screens.</p>
+<div class="graph-scroll"><div id="graph" class="graph" aria-label="Courses connected to skills and career"></div></div>
+<p id="graph-note" class="graph-note"></p>
+</section>
+<aside class="panel detail-panel"><p class="eyebrow">A CLOSER LOOK</p><div id="detail" aria-live="polite"></div></aside>
+</div>
+<section class="next-section"><div class="section-heading"><div><p class="eyebrow">SMALL STEPS. MORE POSSIBILITIES.</p><h2>Your next moves</h2></div><span id="season-note" class="muted"></span></div><div id="recommendations" class="recommendations"></div><details id="blocked"><summary>Explore courses with prerequisites or other offering seasons</summary><div id="blocked-list"></div></details></section>
+<section class="panel activity-panel"><div class="section-heading"><div><p class="eyebrow">BEYOND THE CLASSROOM</p><h2>Experiences along the way</h2></div><span class="tag">Alumni context</span></div><p id="cohort-note" class="muted"></p><div id="activities" class="activities"></div><p class="footnote">Observed associations, not evidence that an activity causes a career outcome. Activities have no skill tags in this dataset.</p><details><summary>See three example pathways</summary><div id="examples" class="examples"></div></details></section>
+<section class="panel compare-panel"><div><p class="eyebrow">ANOTHER POSSIBILITY</p><h2>Compare a direction</h2><p class="muted">Same student. A different set of target skills.</p></div><label>Alternative career<select id="compare" aria-label="Compare another career"></select></label><div id="comparison" role="status" aria-live="polite"></div></section>
+</div>
+<footer>Built for hackUMBC 2026 · DoIT track <span>Course coverage indicates exposure, not mastery or hiring probability.</span></footer>
 {% endblock %}
