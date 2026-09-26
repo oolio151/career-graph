@@ -7,8 +7,56 @@ from python.recommendations import recommend
 from python.engagement import engagement
 from python.advisor import answer
 from python.gemini import AdvisorUnavailable, advisor_status
+from python.resume_upload import MAX_FILE_BYTES, extract_resume
+from python.resume_review import review_resume
 
 api = Blueprint('api', __name__, url_prefix='/api')
+
+
+@api.before_request
+def resume_request_limits():
+    # Flask 3.1 supports per-request limits; keep the existing chat limit intact.
+    if request.endpoint == 'api.extract_resume_text':
+        request.max_content_length = MAX_FILE_BYTES + 64 * 1024
+    elif request.endpoint == 'api.resume_review':
+        request.max_content_length = 128 * 1024
+
+
+@api.after_request
+def resume_no_cache(response):
+    if request.endpoint in {'api.extract_resume_text', 'api.resume_review'}:
+        response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+@api.errorhandler(413)
+def too_large(error):
+    return {'error': 'The request is too large. Resume files must be under 2 MB; other requests must fit their text limits.'}, 413
+
+
+@api.post('/resume/extract')
+def extract_resume_text():
+    uploads = request.files.getlist('resume')
+    if len(uploads) != 1 or not uploads[0].filename:
+        raise ValueError('Upload one resume file.')
+    return {'text': extract_resume(uploads[0]), 'note': 'Review the extracted text before sending it to Gemini.'}
+
+
+@api.post('/resume/review')
+def resume_review():
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        raise ValueError('Send a JSON object.')
+    for field in ('text', 'major', 'role'):
+        if not isinstance(payload.get(field), str):
+            raise ValueError(f'{field} must be text.')
+    include_profile = payload.get('include_profile', False)
+    if not isinstance(include_profile, bool):
+        raise ValueError('include_profile must be true or false.')
+    student_id = session.get('campus_id') if include_profile else None
+    if include_profile and not student_id:
+        raise ValueError('Select a campus profile first, or turn off profile context.')
+    return review_resume(payload['text'], payload['major'], payload['role'], student_id)
 
 
 @api.errorhandler(ValueError)

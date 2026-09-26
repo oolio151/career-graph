@@ -124,6 +124,7 @@ function renderGraph() {
 }
 async function loadDetails(region = '', year = '') {
   if (!selectedRole) return;
+  $('#resume-nav-link').href = '/resume?' + new URLSearchParams({major, role:selectedRole});
   const version = ++detailVersion;
   const context = {major, role:selectedRole, student, season};
   $('#role-detail').setAttribute('aria-busy','true');

@@ -27,23 +27,23 @@ been executed as tests.
 
 ## Endpoint overview
 
-| Method | Path | Used by |
-| --- | --- | --- |
-| GET | `/api/health` | Server availability |
-| GET | `/api/options` | Dropdowns and initial configuration |
-| GET | `/api/pathways` | Explore pathways graph |
-| GET | `/api/roles/<role_id>` | Role details and salary filters |
-| GET | `/api/students` | Student selector |
-| GET | `/api/students/<student_id>/recommendations` | Personalized course panel |
-| GET | `/api/engagement` | My engagement and activity previews |
-| POST | `/api/advisor` | Advisor chat |
+| Method | Path                                         | Used by                             |
+| ------ | -------------------------------------------- | ----------------------------------- |
+| GET    | `/api/health`                                | Server availability                 |
+| GET    | `/api/options`                               | Dropdowns and initial configuration |
+| GET    | `/api/pathways`                              | Explore pathways graph              |
+| GET    | `/api/roles/<role_id>`                       | Role details and salary filters     |
+| GET    | `/api/students`                              | Student selector                    |
+| GET    | `/api/students/<student_id>/recommendations` | Personalized course panel           |
+| GET    | `/api/engagement`                            | My engagement and activity previews |
+| POST   | `/api/advisor`                               | Advisor chat                        |
 
 ## GET /api/health
 
 No parameters. Returns `200` without checking or loading the CSV dataset:
 
 ```json
-{"status": "ok", "app": "career-graph"}
+{ "status": "ok", "app": "career-graph" }
 ```
 
 ```bash
@@ -54,17 +54,17 @@ curl 'http://127.0.0.1:5000/api/health'
 
 No parameters. Returns the supported selections:
 
-| Field | Contents |
-| --- | --- |
-| `majors` | Objects with `id` and `name` |
-| `roles` | Objects with `id`, `title`, `family`, and supported `majors` |
-| `families` | Job-family display names |
-| `regions` | Region display names |
-| `years` | Job start years, newest first |
-| `activity_types` | Objects with `id` and `name` |
-| `snapshot` | `2026-09-15` |
-| `synthetic` | `true` |
-| `advisor_mode` | `gemini` when server credentials/model are configured, otherwise `dataset` |
+| Field            | Contents                                                                   |
+| ---------------- | -------------------------------------------------------------------------- |
+| `majors`         | Objects with `id` and `name`                                               |
+| `roles`          | Objects with `id`, `title`, `family`, and supported `majors`               |
+| `families`       | Job-family display names                                                   |
+| `regions`        | Region display names                                                       |
+| `years`          | Job start years, newest first                                              |
+| `activity_types` | Objects with `id` and `name`                                               |
+| `snapshot`       | `2026-09-15`                                                               |
+| `synthetic`      | `true`                                                                     |
+| `advisor_mode`   | `gemini` when server credentials/model are configured, otherwise `dataset` |
 
 ```bash
 curl 'http://127.0.0.1:5000/api/options'
@@ -72,11 +72,11 @@ curl 'http://127.0.0.1:5000/api/options'
 
 ## GET /api/pathways
 
-| Query parameter | Required | Default / meaning |
-| --- | --- | --- |
-| `major` | No | `cs` |
-| `family` | No | `all`; otherwise an exact family name from options |
-| `focus` | No | Role ID to prioritize in the small graph when supported |
+| Query parameter | Required | Default / meaning                                       |
+| --------------- | -------- | ------------------------------------------------------- |
+| `major`         | No       | `cs`                                                    |
+| `family`        | No       | `all`; otherwise an exact family name from options      |
+| `focus`         | No       | Role ID to prioritize in the small graph when supported |
 
 ```bash
 curl --get 'http://127.0.0.1:5000/api/pathways' \
@@ -108,11 +108,11 @@ small connected graph. Empty cohorts/connections return `200` with empty arrays.
 
 ## GET /api/roles/<role_id>
 
-| Query parameter | Required | Default / meaning |
-| --- | --- | --- |
-| `major` | No | `cs` |
-| `region` | No | All regions; empty string also means all regions |
-| `year` | No | Latest available start year after filtering role, major, and region |
+| Query parameter | Required | Default / meaning                                                   |
+| --------------- | -------- | ------------------------------------------------------------------- |
+| `major`         | No       | `cs`                                                                |
+| `region`        | No       | All regions; empty string also means all regions                    |
+| `year`          | No       | Latest available start year after filtering role, major, and region |
 
 ```bash
 curl --get 'http://127.0.0.1:5000/api/roles/software-engineer-i' \
@@ -122,15 +122,15 @@ curl --get 'http://127.0.0.1:5000/api/roles/software-engineer-i' \
 
 Returns the role identity (`id`, `title`, `family`, `majors`) plus:
 
-| Field | Contents |
-| --- | --- |
-| `major` | Selected major |
-| `record_count`, `alumni_count` | Matching job records and unique alumni |
-| `skills` | `{name, count, percent}` per skill, sorted by frequency |
-| `salary` | `{count, year, region, median, p25, p75, available_years, note}` |
-| `previous_roles`, `next_roles` | Up to five role objects per list, with unique-alumni `count` |
-| `courses` | Catalog matches: `{id, title, skills}` |
-| `source` | `{file, record_ids, count}` for matching employment records |
+| Field                          | Contents                                                         |
+| ------------------------------ | ---------------------------------------------------------------- |
+| `major`                        | Selected major                                                   |
+| `record_count`, `alumni_count` | Matching job records and unique alumni                           |
+| `skills`                       | `{name, count, percent}` per skill, sorted by frequency          |
+| `salary`                       | `{count, year, region, median, p25, p75, available_years, note}` |
+| `previous_roles`, `next_roles` | Up to five role objects per list, with unique-alumni `count`     |
+| `courses`                      | Catalog matches: `{id, title, skills}`                           |
+| `source`                       | `{file, record_ids, count}` for matching employment records      |
 
 Only the **salary** section uses `region` and `year`. Skills, counts, courses,
 transitions, and `source` cover matching roles/major across all years and regions.
@@ -156,9 +156,9 @@ without pagination. Each object contains the fields from
 ## GET /api/students/<student_id>/recommendations
 
 | Query parameter | Required | Default / meaning |
-| --- | --- | --- |
-| `role` | Yes | Target role ID |
-| `season` | No | `Spring` |
+| --------------- | -------- | ----------------- |
+| `role`          | Yes      | Target role ID    |
+| `season`        | No       | `Spring`          |
 
 The student's major determines the alumni cohort; there is no `major` parameter.
 
@@ -194,11 +194,11 @@ full degree requirements, or available seats. An empty suggestion list is valid.
 
 ## GET /api/engagement
 
-| Query parameter | Required | Default / meaning |
-| --- | --- | --- |
-| `major` | No | `cs` |
-| `role` | Yes | Target role ID |
-| `student` | No | Current student ID; must match the selected major |
+| Query parameter | Required | Default / meaning                                 |
+| --------------- | -------- | ------------------------------------------------- |
+| `major`         | No       | `cs`                                              |
+| `role`          | Yes      | Target role ID                                    |
+| `student`       | No       | Current student ID; must match the selected major |
 
 ```bash
 curl --get 'http://127.0.0.1:5000/api/engagement' \
@@ -232,17 +232,17 @@ confirm key validity, quota, or model availability. It never returns the API key
 
 ## POST /api/advisor
 
-| JSON field | Required | Default / meaning |
-| --- | --- | --- |
-| `question` | Yes | Nonblank string, at most 500 characters after trimming |
-| `major` | No | `cs` |
-| `role` | Yes for Gemini | Selected dataset role ID; a role title mentioned in the question sets the question target |
-| `student` | No | Explicit current-student selection; `""` means no personal context. If omitted, uses the campus-ID session and its major when available |
-| `season` | No | `Spring`, `Summer`, or `Fall` for recommendations |
-| `region`, `year` | No | Strings matching the selected role's salary controls; empty means all regions / latest year |
-| `history` | No | Up to 8 alternating `{role: "user" or "model", text: "..."}` entries, starting with user and ending with model |
-| `saved_roles` | No | At most 5 dataset role IDs |
-| `interests` | No | At most 10 activity type IDs from `/api/options` |
+| JSON field       | Required       | Default / meaning                                                                                                                       |
+| ---------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `question`       | Yes            | Nonblank string, at most 500 characters after trimming                                                                                  |
+| `major`          | No             | `cs`                                                                                                                                    |
+| `role`           | Yes for Gemini | Selected dataset role ID; a role title mentioned in the question sets the question target                                               |
+| `student`        | No             | Explicit current-student selection; `""` means no personal context. If omitted, uses the campus-ID session and its major when available |
+| `season`         | No             | `Spring`, `Summer`, or `Fall` for recommendations                                                                                       |
+| `region`, `year` | No             | Strings matching the selected role's salary controls; empty means all regions / latest year                                             |
+| `history`        | No             | Up to 8 alternating `{role: "user" or "model", text: "..."}` entries, starting with user and ending with model                          |
+| `saved_roles`    | No             | At most 5 dataset role IDs                                                                                                              |
+| `interests`      | No             | At most 10 activity type IDs from `/api/options`                                                                                        |
 
 Scalar fields must be strings, not `null`. History has at most 500 characters per
 user message, 3,000 per model reply, and 6,000 total. The current question is sent
@@ -259,12 +259,12 @@ other roles default to all regions and their latest available start year.
 
 The response contains:
 
-| Field | Contents |
-| --- | --- |
-| `answer` | Plain-text generated reply, or deterministic dataset response |
-| `mode` | `gemini` or `dataset` |
-| `model` | Configured model ID, present for Gemini |
-| `role_id` | Resolved question target; legacy dataset no-record replies may omit it |
+| Field     | Contents                                                                                      |
+| --------- | --------------------------------------------------------------------------------------------- |
+| `answer`  | Plain-text generated reply, or deterministic dataset response                                 |
+| `mode`    | `gemini` or `dataset`                                                                         |
+| `model`   | Configured model ID, present for Gemini                                                       |
+| `role_id` | Resolved question target; legacy dataset no-record replies may omit it                        |
 | `sources` | Objects with `file`, `record_ids`, `count`; Gemini also supplies `id` (e.g. `S1`) and `scope` |
 
 Gemini is instructed to cite source IDs beside dataset claims. The supplied source
@@ -280,25 +280,75 @@ returns `503` with a safe message instead of silently falling back. The backend
 stores no conversation history; clients supply recent exchanges with each request.
 Google receives the question, recent history, and selected synthetic context.
 
+## Resume Studio endpoints
+
+`GET /resume` serves the public resume-review page. If a campus profile is selected,
+it can optionally supply course-suggestion context. Query parameters `major` and
+`role` preselect the form; choices must still exist in the dataset.
+
+### POST /api/resume/extract
+
+Submit `multipart/form-data` with one file named `resume`. Supported types are
+PDF, DOCX, and UTF-8 TXT. The file limit is 2 MiB, with a 64 KiB multipart allowance.
+PDFs are limited to five pages; encrypted, unreadable, and image-only PDFs return
+an actionable error. Text must contain 80–16,000 characters. A successful response
+is `{text, note}`; the frontend previews the text for correction. This route does
+not call Gemini. No durable file copy is created by application code.
+
+### POST /api/resume/review
+
+Send JSON with `text` (80–16,000 characters), `major` (`cs` or `is`), and a dataset
+`role` ID. Optional `include_profile` is a boolean, default `false`; when `true`,
+the campus-ID session must exist and match the requested major. The route cannot
+accept arbitrary student profile IDs. Its body limit is 128 KiB to accommodate
+Unicode resumes; the existing advisor limit remains 32 KiB.
+
+Requires configured Gemini credentials. Returns:
+
+- `review`: plain-text editing suggestions; render it as text, not trusted HTML.
+- `mode`, `model`: Gemini mode and configured model ID.
+- `role`, `major`, `snapshot`: reviewed pathway and synthetic dataset snapshot.
+- `resume_lines`: normalized `{id, text}` lines, e.g. `R1`, for reviewing citations.
+- `matches`: cohort definition and count, positive-overlap alumni count, literal
+  resume skill mentions, role skill names not mentioned, method, and up to three
+  alumni examples. Examples contain `campus_id`, `track`, `graduation_year`,
+  `shared_skills`, `shared_count`, supporting `course_ids`, separate `activities`,
+  chronological `pathway`, and `source_ids`.
+- `sources`: CSV source metadata, counts, cohort scopes, and example record IDs.
+  `S` references describe role/profile evidence; `A` references describe selected
+  alumni evidence. Source lists do not independently validate model-generated claims.
+
+The cohort is bachelor's alumni in the selected major who held the selected role.
+Ranking counts literal resume role-skill mentions also present in completed alumni
+course tags, descending, with campus-ID tie breaks. Only positive-overlap alumni
+are returned. Repeated courses count once; F/W/IP and unmapped transfer credits
+contribute no skills. Alumni skill exposure is not assessed proficiency or hiring
+probability; activities are not mapped to skills. No opportunities or live job
+postings are retrieved. See README for extraction and matching limitations.
+
+Both endpoints return JSON errors for invalid input (400), oversized requests
+(413), or provider failures (503), and use `Cache-Control: no-store`. Review data
+is sent to Google only on the review request; no resume history is stored by the app.
+
 ## Errors and status codes
 
-| Status | Meaning |
-| --- | --- |
-| `200` | Successful JSON result, including valid selections with no matching data |
-| `400` | API validation failure, returned as `{"error": "message"}` |
-| `404` | Unknown URL; Flask's default HTML response |
-| `405` | Unsupported method; Flask's default HTML response |
-| `413` | Request body exceeds 32 KiB; Flask's default HTML response |
-| `503` | Gemini rejected, timed out, blocked, or failed to complete the request; JSON `{error, mode: "gemini"}` |
+| Status | Meaning                                                                                                    |
+| ------ | ---------------------------------------------------------------------------------------------------------- |
+| `200`  | Successful JSON result, including valid selections with no matching data                                   |
+| `400`  | API validation failure, returned as `{"error": "message"}`                                                 |
+| `404`  | Unknown URL; Flask's default HTML response                                                                 |
+| `405`  | Unsupported method; Flask's default HTML response                                                          |
+| `413`  | Request exceeds its size limit; JSON error (32 KiB by default, larger bounded limits for resume endpoints) |
+| `503`  | Gemini rejected, timed out, blocked, or failed to complete the request; JSON `{error, mode: "gemini"}`     |
 
 Examples of validation errors:
 
 ```json
-{"error": "Choose a valid student profile."}
+{ "error": "Choose a valid student profile." }
 ```
 
 ```json
-{"error": "The student profile must match the selected major."}
+{ "error": "The student profile must match the selected major." }
 ```
 
 Malformed/missing advisor JSON returns `400` with `Send a JSON object.`
@@ -309,14 +359,14 @@ is JSON; framework errors are not wrapped by the API's validation handler.
 
 These routes return HTML or redirects, rather than API JSON.
 
-| Method | Path | Behavior |
-| --- | --- | --- |
-| GET | `/` or `/login` | Campus-ID form |
-| POST | `/` or `/login` | Form-encoded `campus_id`; valid current ID selects a session profile and redirects `303` to `/workspace` |
-| POST | `/` or `/login` with `campus_id=-1` | Clears session and redirects `303` to `/demo` |
-| GET | `/workspace` | Selected student's dashboard; redirects `302` to login without a profile |
-| GET | `/demo` | Public dashboard with no preselected student |
-| POST | `/logout` | Clears session and redirects `303` to login |
+| Method | Path                                | Behavior                                                                                                 |
+| ------ | ----------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| GET    | `/` or `/login`                     | Campus-ID form                                                                                           |
+| POST   | `/` or `/login`                     | Form-encoded `campus_id`; valid current ID selects a session profile and redirects `303` to `/workspace` |
+| POST   | `/` or `/login` with `campus_id=-1` | Clears session and redirects `303` to `/demo`                                                            |
+| GET    | `/workspace`                        | Selected student's dashboard; redirects `302` to login without a profile                                 |
+| GET    | `/demo`                             | Public dashboard with no preselected student                                                             |
+| POST   | `/logout`                           | Clears session and redirects `303` to login                                                              |
 
 Login trims whitespace and uppercases campus IDs. Invalid or unknown IDs return
 an HTML form with status `400`. Use cookies to retain a selected profile:

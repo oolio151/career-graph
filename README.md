@@ -104,22 +104,65 @@ base pay, and show the median and 25th/75th percentiles with record counts.
 Skill frequencies use all matching role records across years; salary filters do
 not change those frequencies. These synthetic figures are not market forecasts.
 
+## Resume Studio
+
+Open **Resume studio** in the sidebar, or visit `/resume`. The sidebar link carries
+over the role and major currently selected in Explore pathways. Choose a pathway,
+upload a PDF/DOCX/UTF-8 TXT resume (up to 2 MB, PDFs up to five pages), and check the
+editable extracted text before selecting **Review with Gemini**. Pasting text also
+works. Reviews require 80–16,000 characters and configured Gemini credentials.
+Run `python -m pip install -r requirements.txt` after pulling this feature to add
+`pypdf` for PDF extraction. Scanned/image-only and encrypted PDFs are not supported;
+paste readable text instead. DOCX extraction uses document-body paragraphs and tables;
+headers, footers, comments, images, and layout are not analyzed.
+
+Gemini receives the confirmed text plus the selected role's computed CSV evidence.
+An optional checkbox includes the current synthetic campus profile for course
+suggestions. The profile must match the selected major; it never establishes facts
+about the resume owner. The prompt requests specific, truthful bullet rewrites with
+resume line references and dataset source citations, and prohibits invented metrics,
+qualifications, employers, or experiences. Generated advice still needs human review.
+
+Alumni comparisons use a transparent, deterministic method:
+
+- Cohort: unique Bachelor of Science alumni in the selected major who held the role.
+- Detect literal role-skill vocabulary mentions in the resume (case-insensitive,
+  except single-letter skill names). No synonym expansion or proficiency is inferred.
+- Compare those mentions with each alum's completed-course skill tags. Deduplicate
+  courses, exclude F/W/IP, and require positive earned credits. Transfer credits
+  contribute no course-mapped skills.
+- Rank by shared skill count, break ties by campus ID, and show at most three
+  positive-overlap examples with supporting course IDs and career histories.
+- Display activities separately; they have no structured skill tags. Empty results
+  remain empty. These are synthetic examples, not real alumni contacts, a probability
+  of hiring, an ATS score, or evidence that an activity caused an outcome.
+
+Results include editing notes, vocabulary mentions, source records, and matching
+alumni examples, with copy/download controls. No live job postings are retrieved.
+Uploaded files are processed for text extraction and are not retained by the app.
+Only **Review with Gemini** sends the confirmed text and context to Google. Resume
+text and reviews are not saved in localStorage, the session cookie, or a database.
+Clear workspace removes them from the page; explicit downloads are saved by the user.
+The upload/review endpoints return `Cache-Control: no-store`.
+
 ## Backend layout
 
 All Python code except `app.py` lives under `python/`:
 
-| File | Responsibility |
-| --- | --- |
-| `data_loader.py` | Cached CSV loading, indexes, shared parsing, and options |
-| `pathways.py` | Observed major-to-job and job-to-job graph |
-| `roles.py` | Role skills, salary summaries, related courses, and transitions |
-| `recommendations.py` | Student course coverage and next-course suggestions |
-| `engagement.py` | Activity counts and example alumni histories |
-| `advisor.py` | Gemini orchestration and dataset-only fallback |
-| `advisor_context.py` | Sourced student/role context and advisor instructions |
-| `gemini.py` | Server-only Gemini transport, configuration, and safe errors |
-| `api.py` | Flask JSON routes and input validation |
-| `auth.py` | Campus-ID lookup and selected-profile session helpers |
+| File                 | Responsibility                                                  |
+| -------------------- | --------------------------------------------------------------- |
+| `data_loader.py`     | Cached CSV loading, indexes, shared parsing, and options        |
+| `pathways.py`        | Observed major-to-job and job-to-job graph                      |
+| `roles.py`           | Role skills, salary summaries, related courses, and transitions |
+| `recommendations.py` | Student course coverage and next-course suggestions             |
+| `engagement.py`      | Activity counts and example alumni histories                    |
+| `advisor.py`         | Gemini orchestration and dataset-only fallback                  |
+| `advisor_context.py` | Sourced student/role context and advisor instructions           |
+| `gemini.py`          | Server-only Gemini transport, configuration, and safe errors    |
+| `api.py`             | Flask JSON routes and input validation                          |
+| `auth.py`            | Campus-ID lookup and selected-profile session helpers           |
+| `resume_upload.py`   | Bounded PDF/DOCX/TXT text extraction                            |
+| `resume_review.py`   | Resume editing context and sourced alumni overlap comparisons   |
 
 Source files remain in `data/`; the full dataset is loaded lazily once per server
 process. Restart Flask after replacing CSV files to reload the data.
@@ -129,17 +172,19 @@ process. Restart Flask after replacing CSV files to reload the data.
 See [API_README.md](API_README.md) for the complete endpoint reference, including
 parameters, response fields, curl examples, errors, and campus-ID session routes.
 
-| Endpoint | Inputs |
-| --- | --- |
-| `GET /api/health` | None |
-| `GET /api/options` | None |
-| `GET /api/pathways` | `major=cs\|is`, optional `family`, `focus` role ID |
-| `GET /api/roles/<id>` | `major`, optional `region`, `year` |
-| `GET /api/students` | `major` |
-| `GET /api/students/<id>/recommendations` | `role`, optional `season=Spring\|Summer\|Fall` |
-| `GET /api/engagement` | `major`, `role`, optional `student` |
-| `GET /api/advisor/status` | Provider configuration status (no credential values) |
-| `POST /api/advisor` | JSON: `question`, `major`, `role`, optional `student`, `season`, `history`, `saved_roles`, `interests`, `region`, `year` |
+| Endpoint                                 | Inputs                                                                                                                   |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `GET /api/health`                        | None                                                                                                                     |
+| `POST /api/resume/extract`               | Multipart `resume` file                                                                                                  |
+| `POST /api/resume/review`                | JSON `text`, `major`, `role`, optional `include_profile`                                                                 |
+| `GET /api/options`                       | None                                                                                                                     |
+| `GET /api/pathways`                      | `major=cs\|is`, optional `family`, `focus` role ID                                                                       |
+| `GET /api/roles/<id>`                    | `major`, optional `region`, `year`                                                                                       |
+| `GET /api/students`                      | `major`                                                                                                                  |
+| `GET /api/students/<id>/recommendations` | `role`, optional `season=Spring\|Summer\|Fall`                                                                           |
+| `GET /api/engagement`                    | `major`, `role`, optional `student`                                                                                      |
+| `GET /api/advisor/status`                | Provider configuration status (no credential values)                                                                     |
+| `POST /api/advisor`                      | JSON: `question`, `major`, `role`, optional `student`, `season`, `history`, `saved_roles`, `interests`, `region`, `year` |
 
 Invalid selections return JSON errors with status 400. The frontend displays
 loading/error messages and offers retries. No tests or additional mobile work

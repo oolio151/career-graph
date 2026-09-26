@@ -1,0 +1,259 @@
+{% extends "base.html" %} {% block title %}Resume Studio — Career Graph{%
+endblock %} {% block scripts %}
+<script id="initial-profile" type="application/json">
+  {{ initial_profile | default(none) | tojson }}
+</script>
+<script src="{{ url_for('static', filename='js/resume.js') }}" defer></script>
+{% endblock %} {% block content %} {% include '_workspace_sidebar.html' %}
+<div class="app-shell">
+  <header class="topbar">
+    <div class="breadcrumb">
+      <span>My workspace</span><span class="slash">/</span
+      ><strong>Resume studio</strong>
+    </div>
+    <div class="topbar-right">
+      <a
+        class="inline-link"
+        href="{{ url_for('workspace') if initial_profile else url_for('demo') }}"
+        >Back to pathways ↗</a
+      ><span class="demo-badge"><span></span>Synthetic career evidence</span>
+    </div>
+  </header>
+  <main id="main" tabindex="-1">
+    <section class="page-heading">
+      <div>
+        <p class="eyebrow">YOUR EXPERIENCE. A CLEARER STORY.</p>
+        <h1>A resume with <em>direction.</em></h1>
+        <p>Connect what you’ve done to the work you want to do next.</p>
+      </div>
+      <span class="subtle-badge" id="resume-provider">CHECKING GEMINI</span>
+    </section>
+    <div class="resume-layout">
+      <section class="resume-panel" aria-labelledby="resume-form-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">01 / SET YOUR DIRECTION</p>
+            <h2 id="resume-form-title">Bring your experience into focus.</h2>
+          </div>
+          <button type="button" class="inline-link" id="resume-clear">
+            Clear workspace
+          </button>
+        </div>
+        <form id="resume-form" autocomplete="off">
+          <fieldset id="resume-fields">
+            <div class="resume-controls">
+              <label
+                >Major<select id="resume-major" required>
+                  <option value="cs">Computer Science</option>
+                  <option value="is">Information Systems</option>
+                </select></label
+              >
+              <label
+                >Target pathway<select id="resume-role" required disabled>
+                  <option value="">Loading pathways…</option>
+                </select></label
+              >
+            </div>
+            {% if initial_profile %}
+            <label class="resume-profile-choice"
+              ><input type="checkbox" id="resume-include-profile" />Include {{
+              initial_profile.campus_id }}’s synthetic profile for course
+              suggestions</label
+            >
+            <p class="resume-hint">
+              Optional context only. The synthetic profile is not evidence of
+              claims in your resume.
+            </p>
+            {% endif %}
+            <div class="resume-upload" id="resume-dropzone">
+              <span class="metric-icon green"
+                ><svg class="icon" aria-hidden="true">
+                  <use href="#i-file" /></svg
+              ></span>
+              <label for="resume-file">Upload your resume</label>
+              <p>Drop a file here, or choose one below.</p>
+              <input
+                id="resume-file"
+                type="file"
+                accept=".pdf,.docx,.txt"
+                aria-describedby="resume-file-hint"
+              />
+              <p id="resume-file-hint">
+                PDF, DOCX, or TXT · Up to 2 MB · PDFs up to 5 pages
+              </p>
+            </div>
+            <div class="resume-editor-heading">
+              <label for="resume-text">Review the text, or paste it here</label
+              ><span id="resume-character-count">0 / 16,000</span>
+            </div>
+            <textarea
+              id="resume-text"
+              rows="13"
+              minlength="80"
+              maxlength="16000"
+              required
+              placeholder="Paste your resume, or upload a file to extract its text. Check that your experience and bullet points came through correctly."
+              aria-describedby="resume-text-hint"
+            ></textarea>
+            <p class="resume-hint" id="resume-text-hint">
+              Text extraction can change layout. Correct missing text and remove
+              any contact details you don’t want to share.
+            </p>
+            <button
+              type="submit"
+              class="primary-button resume-submit"
+              id="resume-submit"
+              disabled
+            >
+              <svg class="icon" aria-hidden="true"><use href="#i-spark" /></svg
+              >Review with Gemini<svg class="icon" aria-hidden="true">
+                <use href="#i-arrow" />
+              </svg>
+            </button>
+            <p class="resume-hint">
+              Selecting a file extracts its text on this server. Clicking Review
+              sends the text and selected context to Google Gemini. This app
+              does not retain uploads or reviews after the request/page session.
+            </p>
+          </fieldset>
+        </form>
+        <div id="resume-pending" class="chat-thinking" role="status" hidden>
+          <span class="thinking-dots" aria-hidden="true"
+            ><span></span><span></span><span></span></span
+          ><span id="resume-pending-label"
+            >Gemini is reviewing your resume…</span
+          >
+        </div>
+        <p
+          id="resume-status"
+          class="resume-status"
+          role="status"
+          aria-live="polite"
+        ></p>
+        <button
+          id="resume-retry-options"
+          class="inline-link"
+          type="button"
+          hidden
+        >
+          Retry loading pathways ↗
+        </button>
+      </section>
+      <aside class="resume-guide">
+        <span class="advisor-spark"
+          ><svg class="icon" aria-hidden="true"><use href="#i-spark" /></svg
+        ></span>
+        <p class="eyebrow">LESS GUESSWORK. MORE INTENTION.</p>
+        <h2>Make the experience<br />you have <em>count.</em></h2>
+        <ol>
+          <li>
+            <strong>Tell a stronger story</strong>
+            <p>
+              Get specific edits and before-and-after bullet suggestions, using
+              only claims your resume supports.
+            </p>
+          </li>
+          <li>
+            <strong>Find the relevant details</strong>
+            <p>
+              Compare your wording with skill tags recorded for your selected
+              career role.
+            </p>
+          </li>
+          <li>
+            <strong>Learn from example pathways</strong>
+            <p>
+              See synthetic alumni whose completed coursework shares skills
+              mentioned in your resume.
+            </p>
+          </li>
+        </ol>
+        <div class="resume-guide-note">
+          <svg class="icon" aria-hidden="true"><use href="#i-info" /></svg>
+          <p>
+            Alumni matches show overlap, not a hiring score. This dataset
+            contains fabricated career histories, not live opportunities or real
+            alumni contacts.
+          </p>
+        </div>
+      </aside>
+    </div>
+    <section
+      id="resume-results"
+      class="resume-results"
+      aria-labelledby="resume-results-title"
+      hidden
+    >
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">02 / YOUR NEXT DRAFT</p>
+          <h2 id="resume-results-title" tabindex="-1">
+            Your pathway-focused review
+          </h2>
+          <p id="resume-result-context"></p>
+        </div>
+        <div class="resume-actions">
+          <button class="inline-link" id="resume-copy" type="button">
+            Copy review</button
+          ><button class="inline-link" id="resume-download" type="button">
+            Download notes ↓
+          </button>
+        </div>
+      </div>
+      <article class="resume-panel">
+        <p class="resume-result-label">
+          GEMINI SUGGESTIONS · VERIFY BEFORE USING
+        </p>
+        <div id="resume-review-copy" class="resume-review-copy"></div>
+        <p class="resume-hint">
+          Keep edits truthful. Confirm any suggested additions, and never copy
+          another person’s experience into your resume.
+        </p>
+      </article>
+      <div class="resume-evidence-grid">
+        <section class="resume-panel">
+          <h3>Role skill mentions</h3>
+          <p class="resume-hint">
+            Literal matches to the dataset vocabulary. Mentions do not
+            demonstrate proficiency; missing terms do not establish missing
+            skills.
+          </p>
+          <h4>Found in your resume</h4>
+          <div id="resume-mentioned" class="tags"></div>
+          <h4>Not explicitly mentioned</h4>
+          <div id="resume-unmentioned" class="tags"></div>
+        </section>
+        <section class="resume-panel">
+          <h3>How alumni examples are selected</h3>
+          <p id="resume-cohort" class="resume-hint"></p>
+          <p id="resume-method" class="resume-hint"></p>
+        </section>
+      </div>
+      <div class="section-heading">
+        <div>
+          <h2>Similarities worth exploring</h2>
+          <p>
+            Up to three synthetic alumni examples, with the shared evidence
+            visible.
+          </p>
+        </div>
+      </div>
+      <div id="resume-alumni" class="resume-alumni-grid"></div>
+      <details class="resume-panel resume-records">
+        <summary>Dataset records supplied to Gemini</summary>
+        <ul id="resume-sources"></ul>
+      </details>
+      <details class="resume-panel resume-records">
+        <summary>Resume line references for this review</summary>
+        <ol id="resume-lines"></ol>
+      </details>
+    </section>
+    <footer class="page-footer">
+      <span
+        ><span class="footer-brand">careergraph.</span>A clearer view of what’s
+        next.</span
+      ><span>Career evidence: synthetic dataset · September 15, 2026</span>
+    </footer>
+  </main>
+</div>
+{% endblock %}

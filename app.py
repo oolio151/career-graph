@@ -49,6 +49,10 @@ def create_app():
     def demo():
         return render_template('index.html', initial_profile=None)
 
+    @app.get('/resume')
+    def resume():
+        return render_template('resume.html', initial_profile=current_profile(), resume_page=True)
+
     @app.post('/logout')
     def logout():
         session.clear()
