@@ -3,6 +3,8 @@ const form = document.querySelector("#entry-form");
 const idInput = document.querySelector("#campus-id");
 const preview = document.querySelector("#student-preview");
 const error = document.querySelector("#entry-error");
+const resumeInput = document.querySelector("#resume");
+const skipResume = document.querySelector("#skip-resume");
 const csrf = document.querySelector('meta[name="csrf-token"]').content;
 let lookup = 0;
 function showError(message) { error.textContent = message; error.hidden = !message; }
@@ -31,11 +33,19 @@ async function findStudent() {
 }
 idInput.addEventListener("input", () => { ++lookup; preview.hidden = true; showError(""); });
 document.querySelector("#find-student").addEventListener("click", findStudent);
+skipResume.addEventListener("change", () => {
+  resumeInput.disabled = skipResume.checked;
+  resumeInput.required = !skipResume.checked;
+  resumeInput.value = skipResume.checked ? "" : resumeInput.value;
+  document.querySelector("#resume-hint").textContent = skipResume.checked
+    ? "You can upload a resume later from Resume Studio."
+    : "PDF, DOCX, or TXT · Up to 5 MB. Stored on this computer. The resume page can read it here. It is not sent to an outside model.";
+});
 document.querySelectorAll("[data-sample]").forEach(button => button.addEventListener("click", () => { idInput.value = button.dataset.sample; findStudent(); }));
 form.addEventListener("submit", async (event) => {
   event.preventDefault(); showError("");
-  const file = document.querySelector("#resume").files[0];
-  if (!file || !file.size || file.size > 5 * 1024 * 1024) { showError("Choose a nonempty resume smaller than 5 MB."); return; }
+  const file = resumeInput.files[0];
+  if (!skipResume.checked && (!file || !file.size || file.size > 5 * 1024 * 1024)) { showError("Choose a nonempty resume smaller than 5 MB, or select ‘I’ll add a resume later.’"); return; }
   const button = document.querySelector("#enter-app"); button.disabled = true; button.textContent = "Opening your profile…";
   try {
     const response = await fetch("/api/enroll", {method:"POST", headers:{"X-CSRF-Token":csrf}, body:new FormData(form)});

@@ -208,17 +208,22 @@ def create_app(test_config=None):
         campus_id = request.form.get("campus_id", "").strip().upper()
         if campus_id not in dataset.students:
             return jsonify(error="Enter a valid current student ID before uploading."), 400
-        try:
-            name, extension, data = validate_resume(request.files.get("resume"))
-        except ValueError as error:
-            return jsonify(error=str(error)), 400
+        upload = request.files.get("resume")
+        if upload and upload.filename:
+            try:
+                name, extension, data = validate_resume(upload)
+            except ValueError as error:
+                return jsonify(error=str(error)), 400
+        else:
+            name, extension, data = "", "", b""
         token = secrets.token_hex(16)
         file = private / f"{token}{extension}"
         meta = private / f"{token}.json"
         metadata = {"campus_id": campus_id, "filename": name, "extension": extension, "size": len(data)}
         try:
-            file.write_bytes(data)
-            file.chmod(0o600)
+            if data:
+                file.write_bytes(data)
+                file.chmod(0o600)
             meta.write_text(json.dumps(metadata))
             meta.chmod(0o600)
         except OSError:
