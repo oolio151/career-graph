@@ -1,202 +1,465 @@
 "use strict";
 
+// Presentation fixtures only. Replace with dataset-backed API responses later.
+const roles = {
+  software: {
+    title: "Software Engineer",
+    group: "engineering",
+    stage: "First chapter",
+    salary: "$75k – $110k",
+    description:
+      "Turn ideas into useful software. Build the applications and systems people rely on every day.",
+    skills: ["Python", "Data structures", "Git", "Problem solving"],
+  },
+  frontend: {
+    title: "Frontend Developer",
+    group: "engineering",
+    stage: "First chapter",
+    salary: "$70k – $105k",
+    description:
+      "Bring thoughtful digital experiences to life, connecting visual design with accessible, interactive interfaces.",
+    skills: ["JavaScript", "HTML & CSS", "Accessibility", "UI development"],
+  },
+  analyst: {
+    title: "Data Analyst",
+    group: "data",
+    stage: "First chapter",
+    salary: "$60k – $90k",
+    description:
+      "Find the story in the numbers. Turn complex information into clear insights that help teams make decisions.",
+    skills: ["SQL", "Python", "Visualization", "Statistics"],
+  },
+  senior: {
+    title: "Senior Software Engineer",
+    group: "engineering",
+    stage: "Next chapter",
+    salary: "$115k – $160k",
+    description:
+      "Take on larger technical challenges, shape reliable systems, and help other engineers do their best work.",
+    skills: ["System design", "Architecture", "Mentoring", "Testing"],
+  },
+  product: {
+    title: "Product Engineer",
+    group: "engineering",
+    stage: "Next chapter",
+    salary: "$100k – $145k",
+    description:
+      "Connect user needs with technical possibilities. Own features from the first conversation to the finished experience.",
+    skills: ["Full-stack development", "User research", "Prototyping"],
+  },
+  scientist: {
+    title: "Data Scientist",
+    group: "data",
+    stage: "Next chapter",
+    salary: "$95k – $140k",
+    description:
+      "Ask deeper questions of data, design experiments, and build models that help make sense of complex problems.",
+    skills: ["Machine learning", "Statistics", "Python", "Experimentation"],
+  },
+  systems: {
+    title: "Systems Analyst",
+    group: "engineering",
+    stage: "First chapter",
+    salary: "$65k – $95k",
+    description:
+      "Understand how people and technology work together, then design better systems for the problems that matter.",
+    skills: [
+      "Requirements analysis",
+      "SQL",
+      "Process mapping",
+      "Communication",
+    ],
+  },
+  it: {
+    title: "IT Specialist",
+    group: "engineering",
+    stage: "First chapter",
+    salary: "$55k – $85k",
+    description:
+      "Keep people connected and organizations running through reliable infrastructure and thoughtful technical support.",
+    skills: ["Networking", "Troubleshooting", "Security", "Linux"],
+  },
+  architect: {
+    title: "Solutions Architect",
+    group: "engineering",
+    stage: "Next chapter",
+    salary: "$110k – $155k",
+    description:
+      "Design the bigger picture: connect systems, translate business needs, and guide technical decisions across a team.",
+    skills: [
+      "Cloud platforms",
+      "System design",
+      "Integration",
+      "Communication",
+    ],
+  },
+  manager: {
+    title: "IT Project Manager",
+    group: "engineering",
+    stage: "Next chapter",
+    salary: "$90k – $130k",
+    description:
+      "Help teams turn plans into working technology by connecting the right people, priorities, and resources.",
+    skills: ["Planning", "Agile methods", "Leadership", "Risk management"],
+  },
+};
+const pathways = {
+  cs: ["software", "frontend", "analyst", "senior", "product", "scientist"],
+  is: ["systems", "it", "analyst", "architect", "manager", "scientist"],
+};
+const activities = [
+  {
+    id: "hackathon",
+    name: "Build at a hackathon",
+    type: "HANDS-ON LEARNING",
+    icon: "code",
+    color: "peach",
+    description: "A weekend of ideas. A project you can point to.",
+    connection: "Engineering pathways",
+    skills: ["Prototyping", "Teamwork", "Git"],
+    next: "Pick a small problem, build a working demo, and document what you learned. Your project does not need to win to be worth sharing.",
+    role: "software",
+  },
+  {
+    id: "research",
+    name: "Get into research",
+    type: "CURIOSITY IN ACTION",
+    icon: "search",
+    color: "purple",
+    description: "Go deeper into a question that interests you.",
+    connection: "Data & analytics pathways",
+    skills: ["Python", "Analysis", "Experimentation"],
+    next: "Find a research area you enjoy, read about a lab’s work, and prepare a short introduction describing what you want to learn.",
+    role: "scientist",
+  },
+  {
+    id: "community",
+    name: "Find your people",
+    type: "CAMPUS CONNECTIONS",
+    icon: "people",
+    color: "green",
+    description: "Learn together. Make things. Grow your circle.",
+    connection: "Skills for every pathway",
+    skills: ["Communication", "Leadership", "Collaboration"],
+    next: "Explore a student organization, attend an open meeting, and volunteer for a small project that gives you a chance to contribute.",
+    role: "product",
+  },
+];
 const $ = (selector) => document.querySelector(selector);
-const escapeHTML = (value) => String(value).replace(/[&<>"']/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
-const chips = (items) => items.map((s) => `<span class="skill-chip">${escapeHTML(s)}</span>`).join("");
-const statusLabels = {completed: "Completed", progress: "In progress", suggested: "Suggested", gap: "Skill gap"};
-let state = null;
-let options = null;
-let expanded = false;
-let requestVersion = 0;
-let comparisonVersion = 0;
-let nodes = [];
-let edges = [];
-
-async function getJSON(url) {
-  const response = await fetch(url);
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error(body.error || `Request failed (${response.status}).`);
-  }
-  return response.json();
-}
-
-function pathwayURL(student, career, season) {
-  return `/api/pathway?${new URLSearchParams({student, career, season})}`;
-}
-
-function setStatus(message, error = false) {
-  $("#app-status").textContent = message;
-  $("#app-status").classList.toggle("error", error);
-}
-
-async function initialize() {
-  $("#retry").hidden = true;
-  setStatus("Loading the career dataset…");
+const icon = (name) =>
+  `<svg class="icon" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+function readIds(key, valid) {
   try {
-    options = await getJSON("/api/options");
-    $("#student").innerHTML = options.students.map((s) => `<option value="${escapeHTML(s.campus_id)}">${escapeHTML(s.campus_id)} · ${escapeHTML(s.major)} · ${escapeHTML(s.class_level)}</option>`).join("");
-    $("#career").innerHTML = options.careers.map((c) => `<option>${escapeHTML(c)}</option>`).join("");
-    $("#career").value = options.careers.includes("Data & Analytics") ? "Data & Analytics" : options.careers[0];
-    $("#explore").disabled = false;
-    await loadPathway();
-  } catch (error) {
-    setStatus(`Couldn't load the dataset. ${error.message}`, true);
-    $("#retry").hidden = false;
+    const value = JSON.parse(localStorage.getItem(key) || "[]");
+    return new Set(
+      Array.isArray(value) ? value.filter((id) => valid.includes(id)) : [],
+    );
+  } catch {
+    return new Set();
   }
 }
-
-async function loadPathway() {
-  const version = ++requestVersion;
-  ++comparisonVersion;
-  $("#explore").disabled = true;
-  $("#results").hidden = true;
-  setStatus("Finding your connections…");
+const saved = readIds("careergraph.saved", Object.keys(roles));
+const planned = readIds(
+  "careergraph.activities",
+  activities.map((a) => a.id),
+);
+let major = "cs";
+let selectedRole = "software";
+let filter = "all";
+let currentView = "explore";
+let toastTimer;
+function notify(message) {
+  clearTimeout(toastTimer);
+  $("#toast").textContent = message;
+  $("#toast").classList.add("visible");
+  toastTimer = setTimeout(() => $("#toast").classList.remove("visible"), 3200);
+}
+function persist(key, values) {
   try {
-    const result = await getJSON(pathwayURL($("#student").value, $("#career").value, $("#season").value));
-    if (version !== requestVersion) return;
-    state = result;
-    expanded = false;
-    render();
-    $("#results").hidden = false;
-    setStatus(`Exploring ${state.career} for ${state.student.campus_id} · Based on ${state.job_count.toLocaleString()} entry-level job records.`);
-    compareCareer();
-  } catch (error) {
-    if (version === requestVersion) setStatus(`Couldn't build this pathway. ${error.message} Try Explore pathway again.`, true);
-  } finally {
-    if (version === requestVersion) $("#explore").disabled = false;
+    localStorage.setItem(key, JSON.stringify([...values]));
+    return true;
+  } catch {
+    notify("Saved for this session. Browser storage is unavailable.");
+    return false;
   }
 }
-
-function render() {
-  const s = state.student;
-  $("#profile").innerHTML = `<span class="avatar" aria-hidden="true">↗</span><div><strong>${escapeHTML(s.campus_id)}</strong><small>${escapeHTML(s.major)} · ${escapeHTML(s.track)}</small></div><div class="metric"><strong>${escapeHTML(s.class_level)}</strong><small>${escapeHTML(s.entry_type)}</small></div><div class="metric"><strong>${escapeHTML(s.credits_earned)} / ${escapeHTML(s.credits_required)}</strong><small>Credits earned</small></div><div class="metric"><strong>${s.cumulative_gpa === "Not Applicable" ? "Not yet available" : escapeHTML(s.cumulative_gpa)}</strong><small>Cumulative GPA</small></div><div class="metric"><strong>${escapeHTML(s.expected_graduation_term)}</strong><small>Expected graduation</small></div>`;
-  renderGraph();
-  selectNode("career");
-  renderRecommendations();
-  renderActivities();
-  const previous = $("#compare").value;
-  $("#compare").innerHTML = options.careers.filter((c) => c !== state.career).map((c) => `<option>${escapeHTML(c)}</option>`).join("");
-  if (previous !== state.career && options.careers.includes(previous)) $("#compare").value = previous;
+const pages = {
+  explore: [
+    "Explore pathways",
+    "Your future, <em>connected.</em>",
+    "Connect what you’re learning to who you could become.",
+  ],
+  engagement: [
+    "My engagement",
+    "Small steps. <em>More possibilities.</em>",
+    "Find experiences that help you grow toward your next chapter.",
+  ],
+  advisor: [
+    "AI advisor",
+    "Let’s find <em>your direction.</em>",
+    "A little reflection can turn a big question into a next step.",
+  ],
+  saved: [
+    "Saved pathways",
+    "The paths that <em>caught your eye.</em>",
+    "A collection of possibilities, with room to change your mind.",
+  ],
+};
+function showView(view) {
+  if (!pages[view]) return;
+  currentView = view;
+  document.querySelectorAll(".view").forEach((el) => {
+    el.hidden = el.id !== `view-${view}`;
+  });
+  document.querySelectorAll(".nav-item").forEach((el) => {
+    const active = el.dataset.view === view;
+    el.classList.toggle("active", active);
+    if (active) el.setAttribute("aria-current", "page");
+    else el.removeAttribute("aria-current");
+  });
+  $("#breadcrumb-current").textContent = pages[view][0];
+  $("#page-title").innerHTML = pages[view][1];
+  $("#page-description").textContent = pages[view][2];
+  $(".page-heading > .primary-button").hidden = view === "advisor";
+  $("#sidebar").classList.remove("open");
+  $("#menu-toggle").setAttribute("aria-expanded", "false");
+  $("#menu-toggle").setAttribute("aria-label", "Open navigation");
+  if (view === "saved") renderSaved();
+  history.replaceState(null, "", `#${view}`);
+  window.scrollTo({ top: 0 });
+  $("#main").focus({ preventScroll: true });
 }
-
 function renderGraph() {
-  const skills = expanded ? state.skills : state.skills.slice(0, 8);
-  const visibleSkills = new Set(skills.map((s) => s.name));
-  const relevant = [...state.courses].sort((a, b) => {
-    const count = (c) => c.skills.filter((s) => visibleSkills.has(s)).length;
-    return count(b) - count(a) || a.course_id.localeCompare(b.course_id);
-  });
-  const suggestions = state.suggestions.filter((c) => c.skills.some((s) => visibleSkills.has(s)));
-  const courses = expanded ? [...relevant, ...state.suggestions] : [...relevant.filter((c) => c.skills.some((s) => visibleSkills.has(s))).slice(0, 8 - suggestions.length), ...suggestions];
-  const rows = Math.max(skills.length, courses.length, 3);
-  const height = 70 + rows * 68 + 130;
-  nodes = [];
-  edges = [];
-  const add = (id, type, data, x, y, width, title, subtitle, status) => nodes.push({id, type, data, x, y, width, title, subtitle, status});
-  courses.forEach((c, i) => add(`course:${c.course_id}`, "course", c, 24, 48 + i * 68, 205, `${c.course_id} · ${statusLabels[c.status]}`, c.course_title, c.status));
-  skills.forEach((s, i) => add(`skill:${s.name}`, "skill", s, 310, 48 + i * 68, 175, s.name, `${s.percent}% of entry-level records · ${statusLabels[s.status]}`, s.status));
-  add("career", "career", null, 575, 48 + Math.floor(rows / 2) * 68, 160, state.career, `${state.coverage.percent}% course skill coverage`, "career");
-  add("activity", "activity", null, 24, height - 100, 205, "Beyond the classroom", "Activities & certifications", "activity");
-  add("cohort", "activity", null, 310, height - 100, 175, `${state.cohort_count} alumni pathways`, "Same major · Bachelor’s degree", "activity");
-  courses.forEach((c) => c.skills.filter((s) => visibleSkills.has(s)).forEach((s) => edges.push({from: `course:${c.course_id}`, to: `skill:${s}`, status: c.status})));
-  skills.forEach((s) => edges.push({from: `skill:${s.name}`, to: "career", status: s.status}));
-  edges.push({from: "activity", to: "cohort", status: "association"}, {from: "cohort", to: "career", status: "association"});
-  const graph = $("#graph");
-  graph.style.height = `${height}px`;
-  const paths = edges.map((edge, i) => {
-    const source = nodes.find((n) => n.id === edge.from);
-    const target = nodes.find((n) => n.id === edge.to);
-    const x1 = source.x + source.width, y1 = source.y + 27, x2 = target.x, y2 = target.y + 27;
-    const mid = (x1 + x2) / 2;
-    return `<path class="edge ${edge.status}" data-edge="${i}" d="M${x1},${y1} C${mid},${y1} ${mid},${y2} ${x2},${y2}"/>`;
-  }).join("");
-  graph.innerHTML = `<svg width="760" height="${height}" aria-hidden="true">${paths}</svg><span class="column-label" style="left:24px">YOUR LEARNING</span><span class="column-label" style="left:310px">CAREER SKILLS</span><span class="column-label" style="left:575px">YOUR DIRECTION</span>${nodes.map((n, i) => `<button type="button" class="node ${n.status}" data-node="${i}" style="left:${n.x}px;top:${n.y}px;width:${n.width}px" title="${escapeHTML(n.subtitle)}" aria-pressed="false"><strong>${escapeHTML(n.title)}</strong><small>${escapeHTML(n.subtitle)}</small></button>`).join("")}`;
-  graph.querySelectorAll("[data-node]").forEach((button) => button.addEventListener("click", () => selectNode(nodes[Number(button.dataset.node)].id)));
-  $("#graph-note").innerHTML = `${expanded ? "All" : "Focused view:"} ${courses.length} of ${state.courses.length + state.suggestions.length} relevant courses · ${skills.length} of ${state.skills.length} target skills. Purple dotted links show alumni associations. <button type="button" class="text-button" id="expand-graph">${expanded ? "Show focused map" : "Show full map"}</button>`;
-  $("#expand-graph").addEventListener("click", () => { expanded = !expanded; renderGraph(); selectNode("career"); });
+  $("#degree-name").innerHTML =
+    major === "cs" ? "Computer<br>Science" : "Information<br>Systems";
+  $("#role-nodes").innerHTML = pathways[major]
+    .map((id, i) => {
+      const role = roles[id];
+      const muted = filter !== "all" && role.group !== filter;
+      return `<button class="role-node ${id === selectedRole ? "selected" : ""} ${muted ? "muted" : ""}" data-role="${id}" data-column="${i > 2 ? 1 : 0}" data-row="${i % 3}" aria-pressed="${id === selectedRole}" ${muted ? "disabled" : ""}><strong>${role.title}</strong><span><i></i>${i < 3 ? "Explore this role" : "Grow into this role"}</span></button>`;
+    })
+    .join("");
+  document
+    .querySelectorAll(".edge")
+    .forEach((edge) =>
+      edge.classList.toggle(
+        "muted",
+        filter !== "all" && !edge.classList.contains(filter),
+      ),
+    );
+  renderDetail();
 }
-
-function selectNode(id) {
-  const node = nodes.find((n) => n.id === id);
-  if (!node) return;
-  const connected = new Set([id]);
-  const relatedEdges = new Set();
-  edges.forEach((edge, index) => {
-    if (edge.from === id || edge.to === id || id === "career") {
-      connected.add(edge.from); connected.add(edge.to); relatedEdges.add(index);
-    }
-  });
-  $("#graph").querySelectorAll("[data-node]").forEach((button) => {
-    const item = nodes[Number(button.dataset.node)];
-    button.classList.toggle("selected", item.id === id);
-    button.classList.toggle("dim", !connected.has(item.id));
-    button.setAttribute("aria-pressed", String(item.id === id));
-  });
-  $("#graph").querySelectorAll("[data-edge]").forEach((path) => {
-    path.classList.toggle("active", relatedEdges.has(Number(path.dataset.edge)) && id !== "career");
-    path.classList.toggle("dim", !relatedEdges.has(Number(path.dataset.edge)));
-  });
-  if (node.type === "course") showCourse(node.data);
-  else if (node.type === "skill") showSkill(node.data);
-  else if (node.type === "activity") showActivityContext();
-  else showCareer();
+function renderDetail() {
+  const role = roles[selectedRole];
+  const isSaved = saved.has(selectedRole);
+  $("#role-detail").innerHTML =
+    `<div class="detail-top"><span class="role-type">${role.stage.toUpperCase()}</span><button class="icon-button ${isSaved ? "bookmarked" : ""}" data-save="${selectedRole}" aria-label="${isSaved ? "Unsave" : "Save"} ${role.title}" aria-pressed="${isSaved}">${icon("bookmark")}</button></div><h3>${role.title}</h3><p class="detail-description">${role.description}</p><div class="salary"><span>Illustrative annual salary</span><strong>${role.salary}<small> / yr</small></strong><span>Example range · Not a forecast</span></div><div class="skills-block"><p class="skills-title">Skills you could build</p><div class="tags">${role.skills.map((skill) => `<span class="tag">${skill}</span>`).join("")}</div></div><button class="primary-button" data-prompt="How can I explore becoming a ${role.title}?">Explore this path ${icon("arrow")}</button><p class="detail-note">Your path doesn’t have to be a straight line.</p>`;
 }
-
-function showCareer() {
-  const c = state.coverage;
-  $("#detail").innerHTML = `<span class="tag">YOUR TARGET</span><h3 class="detail-rule">${escapeHTML(state.career)}</h3><div class="coverage-number">${c.percent}<span>%</span></div><p>Course-derived skill coverage</p><div class="meter"><span style="width:${c.percent}%"></span></div><p><strong>${c.covered} of ${c.total} target skills</strong> appear in courses you’ve earned credit for. ${c.in_progress} additional skills are in progress.</p><p class="detail-rule">Target skills are the union of tags across ${state.job_count} entry-level job records. Each distinct skill counts equally toward coverage.</p><p>Explore a skill to see its frequency and the courses that teach it.</p><p class="footnote">This reflects coursework exposure, not verified mastery or hiring probability.</p>`;
-}
-
-function showCourse(c) {
-  const prerequisites = c.prerequisite_ids === "Not Applicable" ? "None listed" : c.prerequisite_ids.replaceAll("|", "; ");
-  $("#detail").innerHTML = `<span class="tag">${escapeHTML(statusLabels[c.status])}</span><h3 class="detail-rule">${escapeHTML(c.course_id)}</h3><p>${escapeHTML(c.course_title)}</p><p><strong>${escapeHTML(c.credits)} credits</strong> · ${escapeHTML(c.course_type)}</p><h4>Connected career skills</h4>${chips(c.skills)}<p class="detail-rule"><strong>Prerequisites:</strong> ${escapeHTML(prerequisites)}</p><p><strong>Typically offered:</strong> ${escapeHTML(c.typical_terms_offered.replaceAll("|", ", "))}</p><p><strong>Prerequisite course coverage:</strong> ${c.prerequisite_gaps.length ? `Missing ${escapeHTML(c.prerequisite_gaps.join("; "))}` : "Listed courses have earned credit, or none are required."}</p><p>Minimum grades, transfer equivalencies, seat availability, and full degree rules aren’t supplied. Confirm eligibility with an advisor.</p>`;
-}
-
-function showSkill(skill) {
-  const courses = [...state.courses, ...state.suggestions].filter((c) => c.skills.includes(skill.name));
-  $("#detail").innerHTML = `<span class="tag">${escapeHTML(statusLabels[skill.status])}</span><h3 class="detail-rule">${escapeHTML(skill.name)}</h3><div class="coverage-number">${skill.percent}<span>%</span></div><p>${skill.count} of ${state.job_count} entry-level ${escapeHTML(state.career)} job records list this skill.</p><h4>Your course connections</h4>${courses.length ? `<ul>${courses.map((c) => `<li>${escapeHTML(c.course_id)} · ${escapeHTML(c.course_title)} (${escapeHTML(statusLabels[c.status])})</li>`).join("")}</ul>` : '<p>No completed, in-progress, or currently recommended course covers this skill. Explore the prerequisite and season constraints below.</p>'}<p class="detail-rule">A skill tag identifies course coverage, not a measurement of your ability.</p>`;
-}
-
-function showActivityContext() {
-  $("#detail").innerHTML = `<span class="tag">ALUMNI ASSOCIATION</span><h3 class="detail-rule">Experience adds context.</h3><p>These ${state.cohort_count} alumni earned a bachelor’s in ${escapeHTML(state.student.major)} and have an entry-level ${escapeHTML(state.career)} job record.</p><p>Each person counts once per activity type, even if they joined several times or held several roles.</p><p>Activities have no skill tags, so the map connects them through alumni pathways rather than assigning skills.</p><p class="detail-rule">The comparison spans graduation cohorts from 2015–2026. It is descriptive, not a matched study or a prediction. Scroll to the activity panel for counts and example paths.</p>`;
-}
-
-function renderRecommendations() {
-  $("#season-note").textContent = `Typically offered in ${state.season}`;
-  $("#recommendations").innerHTML = state.suggestions.length ? state.suggestions.map((c, i) => `<article class="recommendation"><div class="step"><span>0${i + 1} / EXPLORE A COURSE</span><span>${escapeHTML(c.credits)} credits</span></div><h3>${escapeHTML(c.course_title)}</h3><p>${escapeHTML(c.course_id)} · ${c.new_skills.length} skills beyond completed coursework</p>${chips(c.new_skills)}<p>Listed prerequisites have course credit, or none are required. Confirm minimum grades and availability.</p><button class="text-button" type="button" data-course="${i}">See the connection ↗</button></article>`).join("") : `<p class="empty">${state.coverage.covered === state.coverage.total ? 'Your completed coursework covers every target skill in this dataset. Explore alumni experiences or compare another career.' : 'No additional course meets the current prerequisite and season filters for skills beyond your completed and in-progress coursework. Explore the constraints below or try another season.'}</p>`;
-  $("#recommendations").querySelectorAll("[data-course]").forEach((button) => button.addEventListener("click", () => {
-    const course = state.suggestions[Number(button.dataset.course)];
-    if (!nodes.some((n) => n.id === `course:${course.course_id}`)) { expanded = true; renderGraph(); }
-    selectNode(`course:${course.course_id}`);
-    $(".detail-panel").scrollIntoView({behavior: "smooth", block: "nearest"});
-  }));
-  $("#blocked").hidden = state.blocked_courses.length === 0;
-  $("#blocked-list").innerHTML = state.blocked_courses.map((c) => `<div class="blocked-item"><strong>${escapeHTML(c.course_id)} · ${escapeHTML(c.course_title)}</strong><br>${c.prerequisite_gaps.length ? `Prerequisite courses without earned credit: ${escapeHTML(c.prerequisite_gaps.join("; "))}. ` : ''}${!c.offered ? `Typically offered in ${escapeHTML(c.typical_terms_offered.replaceAll("|", ", "))}, not ${escapeHTML(state.season)}.` : ''}<br>${chips(c.new_skills)}</div>`).join("");
-}
-
 function renderActivities() {
-  $("#cohort-note").textContent = `${state.cohort_count} unique ${state.student.major} bachelor’s alumni with an entry-level ${state.career} role, across 2015–2026 graduation cohorts. Share who participated at least once:`;
-  $("#activities").innerHTML = state.activities.length ? state.activities.map((a) => `<article class="activity"><h3>${escapeHTML(a.name)}</h3><span class="count">${a.percent}%</span><small>${a.count} of ${state.cohort_count} alumni</small><div class="meter"><span style="width:${a.percent}%"></span></div><small>${a.student_count ? `${a.student_count} in your experience records` : 'Not in your experience records'}</small></article>`).join("") : '<p class="empty">No matching alumni activity records for this comparison.</p>';
-  $("#examples").innerHTML = state.examples.length ? state.examples.map((e) => `<article class="example"><h3>${escapeHTML(e.campus_id)} · Class of ${escapeHTML(e.year)}</h3><p>${escapeHTML(e.track)}</p><p>${escapeHTML(e.activities.join(" · "))}</p><ol>${e.jobs.map((j) => `<li><strong>${escapeHTML(j.title)}</strong><br>${escapeHTML(j.start)} · ${escapeHTML(j.level)}</li>`).join("")}</ol></article>`).join("") : '<p class="empty">No matching pathways.</p>';
+  $("#experience-preview").innerHTML = activities
+    .map(
+      (a) =>
+        `<button class="experience-card" data-activity="${a.id}"><span class="experience-top"><span class="metric-icon ${a.color}">${icon(a.icon)}</span><span>↗</span></span><span class="experience-type">${a.type}</span><h3>${a.name}</h3><p>${a.description}</p><span class="experience-bottom">${a.connection}<span>↗</span></span></button>`,
+    )
+    .join("");
+  $("#engagement-grid").innerHTML = activities
+    .map(
+      (a) =>
+        `<article class="experience-card" id="activity-${a.id}" tabindex="-1"><div class="experience-top"><span class="metric-icon ${a.color}">${icon(a.icon)}</span><span>↗</span></div><span class="experience-type">${a.type}</span><h3>${a.name}</h3><p>${a.description}</p><div class="tags">${a.skills.map((skill) => `<span class="tag">${skill}</span>`).join("")}</div><div class="activity-details"><h4>A place to start</h4><p>${a.next}</p><button class="inline-link" data-open-role="${a.role}">Explore ${roles[a.role].title} ↗</button></div><button class="activity-toggle" data-plan="${a.id}" aria-pressed="${planned.has(a.id)}">${planned.has(a.id) ? "✓ Added to my interests" : "+ Add to my interests"}</button></article>`,
+    )
+    .join("");
 }
-
-async function compareCareer() {
-  if (!state) return;
-  const version = ++comparisonVersion;
-  const current = state;
-  $("#comparison").textContent = "Comparing coursework…";
-  try {
-    const alternative = await getJSON(pathwayURL(current.student.campus_id, $("#compare").value, current.season));
-    if (version !== comparisonVersion || state !== current) return;
-    $("#comparison").innerHTML = `<div class="comparison-score">${current.coverage.percent}% → ${alternative.coverage.percent}%</div><p class="muted">${escapeHTML(current.career)} → ${escapeHTML(alternative.career)}</p><p class="muted">Alternative: ${alternative.coverage.covered} / ${alternative.coverage.total} distinct skills covered. Each career has a different target skill set.</p>`;
-  } catch (error) {
-    if (version === comparisonVersion) $("#comparison").textContent = `Comparison unavailable: ${error.message}`;
+function renderSaved() {
+  $("#saved-count").textContent = saved.size;
+  $("#saved-roles").innerHTML = saved.size
+    ? [...saved]
+        .map((id) => {
+          const role = roles[id];
+          return `<article class="saved-card"><span class="metric-icon green">${icon("case")}</span><h3>${role.title}</h3><p>${role.description}</p><div class="tags">${role.skills.map((skill) => `<span class="tag">${skill}</span>`).join("")}</div><div class="saved-card-actions"><button class="inline-link" data-open-role="${id}">Explore role ↗</button><button class="icon-button bookmarked" data-save="${id}" aria-label="Unsave ${role.title}">${icon("bookmark")}</button></div></article>`;
+        })
+        .join("")
+    : `<div class="empty-state">${icon("bookmark")}<h3>Something will spark your curiosity.</h3><p>Save a role from the pathway map and find it here whenever you’re ready.</p><button class="primary-button" data-view="explore">Explore the possibilities ${icon("arrow")}</button></div>`;
+}
+function openRole(id) {
+  if (!roles[id]) return;
+  if (!pathways[major].includes(id)) {
+    major = pathways.cs.includes(id) ? "cs" : "is";
+    $("#major").value = major;
   }
+  filter = "all";
+  selectedRole = id;
+  updateFilters();
+  renderGraph();
+  showView("explore");
+  $("#pathway-title").scrollIntoView({ block: "start" });
+  $(`[data-role="${id}"]`).focus({ preventScroll: true });
 }
-
-$("#controls").addEventListener("submit", (event) => { event.preventDefault(); loadPathway(); });
-$("#controls").addEventListener("change", () => setStatus("Options changed. Select Explore pathway to update the map."));
-$("#compare").addEventListener("change", compareCareer);
-$("#retry").addEventListener("click", initialize);
-initialize();
+function updateFilters() {
+  document.querySelectorAll("[data-filter]").forEach((button) => {
+    const active = button.dataset.filter === filter;
+    button.classList.toggle("selected", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+}
+function addMessage(text, sender) {
+  const message = document.createElement("div");
+  message.className = `message ${sender}`;
+  const label = document.createElement("span");
+  label.className = "message-label";
+  label.textContent = sender === "user" ? "YOU" : "ADVISOR · SCRIPTED PREVIEW";
+  message.append(label, document.createTextNode(text));
+  $("#chat-messages").append(message);
+  $("#chat-messages").scrollTop = $("#chat-messages").scrollHeight;
+}
+function resetChat() {
+  $("#chat-messages").replaceChildren();
+  addMessage(
+    "Welcome! Your career path can take more than one shape. This preview can help you explore roles, skills, and campus experiences.\n\nWhat would you like to think through?",
+    "advisor",
+  );
+}
+function replyTo(question) {
+  const text = question.toLowerCase();
+  const mentionedRole = Object.values(roles)
+    .sort((a, b) => b.title.length - a.title.length)
+    .find((role) => text.includes(role.title.toLowerCase()));
+  if (mentionedRole)
+    return `Curious about ${mentionedRole.title}? Start by exploring ${mentionedRole.skills.slice(0, 3).join(", ")}.\n\nTry a small project that lets you practice one of these skills, then reflect on which parts you enjoy. Save the role in your pathway map to come back to it.\n\nThis is a prewritten exploration prompt. Dataset-based recommendations are not connected yet.`;
+  if (/skill|learn|course/.test(text))
+    return `For the ${roles[selectedRole].title} role currently selected in your map, our example skills are ${roles[selectedRole].skills.join(", ")}.\n\nChoose one unfamiliar skill and a small project to practice it. A future version will compare coursework with role requirements; this preview has not analyzed your transcript.`;
+  if (/experience|club|research|hackathon|engage/.test(text))
+    return "You can explore three example experiences in My engagement: a hackathon for hands-on building, research for asking deeper questions, or a student organization for collaboration.\n\nChoose something you would enjoy doing consistently and add it to your interests. These are illustrative connections, not measured employment outcomes.";
+  if (/salary|money|roi|cost|pay/.test(text))
+    return "The salary ranges in this prototype are illustrative placeholders. They are not estimates from the track data or current salary research.\n\nA future advisor could compare degree costs and outcome distributions with explicit assumptions. For now, explore the day-to-day work and skills behind a role.";
+  if (/start|path|career|direction/.test(text))
+    return "Start with curiosity: choose your major in Explore pathways, select a role, and look through its example skills. Save anything that catches your attention.\n\nThen visit My engagement and choose one experience you would like to try. You can explore a direction without committing to it.";
+  return "Thanks for sharing that. This scripted preview cannot yet answer open-ended questions or analyze your personal circumstances.\n\nTry asking about career paths, skills to build, or campus experiences. The future AI advisor will use the track dataset and show the records behind its suggestions.";
+}
+function sendQuestion(question) {
+  const value = question.trim().slice(0, 500);
+  if (!value) return;
+  showView("advisor");
+  addMessage(value, "user");
+  addMessage(replyTo(value), "advisor");
+  $("#chat-input").value = "";
+  $("#chat-input").focus({ preventScroll: true });
+}
+document.addEventListener("click", (event) => {
+  const button = event.target.closest("button");
+  if (!button) return;
+  if (button.dataset.view) showView(button.dataset.view);
+  if (button.dataset.role) {
+    selectedRole = button.dataset.role;
+    renderGraph();
+    $(`[data-role="${selectedRole}"]`).focus({ preventScroll: true });
+  }
+  if (button.dataset.filter) {
+    filter = button.dataset.filter;
+    if (filter !== "all" && roles[selectedRole].group !== filter)
+      selectedRole = pathways[major].find((id) => roles[id].group === filter);
+    updateFilters();
+    renderGraph();
+  }
+  if (button.dataset.save) {
+    const id = button.dataset.save;
+    const restoreDetailFocus = button.closest("#role-detail");
+    if (saved.has(id)) saved.delete(id);
+    else saved.add(id);
+    const stored = persist("careergraph.saved", saved);
+    renderDetail();
+    renderSaved();
+    if (restoreDetailFocus)
+      $("#role-detail [data-save]").focus({ preventScroll: true });
+    else if (currentView === "saved") {
+      const target = $("#saved-roles button");
+      if (target) target.focus({ preventScroll: true });
+    }
+    if (stored)
+      notify(
+        saved.has(id)
+          ? "Role added to your saved pathways."
+          : "Role removed from saved pathways.",
+      );
+  }
+  if (button.dataset.openRole) openRole(button.dataset.openRole);
+  if (button.dataset.prompt) sendQuestion(button.dataset.prompt);
+  if (button.dataset.activity) {
+    showView("engagement");
+    $(`#activity-${button.dataset.activity}`).focus();
+  }
+  if (button.dataset.plan) {
+    const id = button.dataset.plan;
+    if (planned.has(id)) planned.delete(id);
+    else planned.add(id);
+    persist("careergraph.activities", planned);
+    renderActivities();
+    $(`[data-plan="${id}"]`).focus({ preventScroll: true });
+  }
+});
+$("#major").addEventListener("change", (event) => {
+  major = event.target.value;
+  selectedRole = pathways[major].find(
+    (id) => filter === "all" || roles[id].group === filter,
+  );
+  renderGraph();
+});
+$("#reset-graph").addEventListener("click", () => {
+  filter = "all";
+  selectedRole = pathways[major][0];
+  updateFilters();
+  renderGraph();
+  $(".graph-scroll").scrollLeft = 0;
+});
+$("#chat-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  sendQuestion($("#chat-input").value);
+});
+$("#clear-chat").addEventListener("click", resetChat);
+$("#about-button").addEventListener("click", () =>
+  $("#about-dialog").showModal(),
+);
+$("#close-about").addEventListener("click", () => $("#about-dialog").close());
+$("#about-dialog").addEventListener("click", (event) => {
+  if (event.target === $("#about-dialog")) {
+    const rect = event.target.getBoundingClientRect();
+    if (
+      event.clientX < rect.left ||
+      event.clientX > rect.right ||
+      event.clientY < rect.top ||
+      event.clientY > rect.bottom
+    )
+      event.target.close();
+  }
+});
+$("#menu-toggle").addEventListener("click", () => {
+  const open = $("#sidebar").classList.toggle("open");
+  $("#menu-toggle").setAttribute("aria-expanded", String(open));
+  $("#menu-toggle").setAttribute(
+    "aria-label",
+    open ? "Close navigation" : "Open navigation",
+  );
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && $("#sidebar").classList.contains("open")) {
+    $("#sidebar").classList.remove("open");
+    $("#menu-toggle").setAttribute("aria-expanded", "false");
+    $("#menu-toggle").setAttribute("aria-label", "Open navigation");
+    $("#menu-toggle").focus();
+  }
+});
+document.addEventListener("click", (event) => {
+  if (
+    !event.target.closest("#sidebar, #menu-toggle") &&
+    $("#sidebar").classList.contains("open")
+  ) {
+    $("#sidebar").classList.remove("open");
+    $("#menu-toggle").setAttribute("aria-expanded", "false");
+    $("#menu-toggle").setAttribute("aria-label", "Open navigation");
+  }
+});
+window.addEventListener("hashchange", () => showView(location.hash.slice(1)));
+renderGraph();
+renderActivities();
+renderSaved();
+resetChat();
+if (pages[location.hash.slice(1)]) showView(location.hash.slice(1));
