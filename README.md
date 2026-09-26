@@ -19,7 +19,6 @@ python -m flask --app app:create_app run --debug
 Open http://127.0.0.1:5000 for the campus-ID entry page. Enter a current student
 ID such as `CID-116490` to open that student's workspace, or `-1` to explore
 the demo. Stop with Ctrl+C. Debug mode is for local development.
-On Windows PowerShell, create the environment with `py -m venv .venv` and
 activate it with `.\.venv\Scripts\Activate.ps1` before running the last two commands.
 No Node.js, database, or frontend build step is needed.
 
@@ -83,6 +82,9 @@ Source files remain in `data/`; the full dataset is loaded lazily once per serve
 process. Restart Flask after replacing CSV files to reload the data.
 
 ## API
+
+See [API_README.md](API_README.md) for the complete endpoint reference, including
+parameters, response fields, curl examples, errors, and campus-ID session routes.
 
 | Endpoint | Inputs |
 | --- | --- |
