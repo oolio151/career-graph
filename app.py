@@ -233,6 +233,8 @@ def create_app(test_config=None):
             return jsonify(error="Could not save your resume. Please try again."), 500
         clear_upload()
         session["upload_id"] = token
+        if request.form.get("school") == "umbc":
+            session["school"] = "umbc"
         return jsonify(next="/app#discover")
 
     @app.get("/api/session")
@@ -319,3 +321,7 @@ def create_app(test_config=None):
         return jsonify(next="/")
 
     return app
+
+
+# Module-level WSGI entry point for deployment services.
+app = create_app()
