@@ -5,6 +5,8 @@ const preview = document.querySelector("#student-preview");
 const error = document.querySelector("#entry-error");
 const resumeInput = document.querySelector("#resume");
 const skipResume = document.querySelector("#skip-resume");
+const resumeLabel = document.querySelector(".upload-label");
+const resumeHint = document.querySelector("#resume-hint");
 const csrf = document.querySelector('meta[name="csrf-token"]').content;
 let lookup = 0;
 function showError(message) { error.textContent = message; error.hidden = !message; }
@@ -36,8 +38,10 @@ document.querySelector("#find-student").addEventListener("click", findStudent);
 skipResume.addEventListener("change", () => {
   resumeInput.disabled = skipResume.checked;
   resumeInput.required = !skipResume.checked;
+  resumeLabel.classList.toggle("muted", skipResume.checked);
+  resumeHint.classList.toggle("muted", skipResume.checked);
   resumeInput.value = skipResume.checked ? "" : resumeInput.value;
-  document.querySelector("#resume-hint").textContent = skipResume.checked
+  resumeHint.textContent = skipResume.checked
     ? "You can upload a resume later from Resume Studio."
     : "PDF, DOCX, or TXT · Up to 5 MB. Stored on this computer. The resume page can read it here. It is not sent to an outside model.";
 });
