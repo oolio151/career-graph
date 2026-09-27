@@ -257,6 +257,12 @@ main:focus {
   color:var(--accent-foreground);
 }
 
+.email-actions {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
 .primary-button {
   display:inline-flex;
   align-items:center;
@@ -272,6 +278,8 @@ main:focus {
   font-size:14px;
   box-shadow:0 4px 0 #d59a27;
   white-space:nowrap;
+
+  margin-left: auto;
 }
 
 .primary-button:hover {
