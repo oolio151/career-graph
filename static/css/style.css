@@ -1440,6 +1440,13 @@ th { background: #f4eee5; position: sticky; top: 0; }
 .resume-stage-bar h2 { font-size: 16px; letter-spacing: -.2px; overflow-wrap: anywhere; }
 .resume-stage-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
 .resume-stage-actions .secondary-button { min-height:40px; padding:9px 12px; }
+.resume-generate-form { display:flex; flex-direction:column; gap:7px; padding:14px 18px; background:#faf9f4; border-bottom:1px solid var(--line); }
+.resume-generate-form label { font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+.resume-generate-row { display:flex; gap:8px; align-items:center; }
+.resume-generate-row input { flex:1; min-width:0; border:1px solid #d5d2c5; border-radius:10px; padding:10px 12px; font:inherit; color:var(--ink); background:#fff; }
+.resume-generate-row input:focus { outline:2px solid #ffcc00; outline-offset:1px; }
+.resume-generate-row .primary-button { min-height:40px; padding:9px 14px; box-shadow:none; }
+.resume-generate-form .field-hint { margin:0; }
 .resume-tabs { display:flex; gap:4px; padding:8px 14px 0; overflow-x:auto; background:#fff; border-bottom:1px solid var(--line); scrollbar-width:thin; }
 .resume-tabs button { min-height:42px; padding:8px 14px; border:0; border-bottom:3px solid transparent; background:transparent; color:var(--muted); font-size:13px; font-weight:600; }
 .resume-tabs button[aria-selected="true"] { color:var(--ink); border-bottom-color:#d4ac32; }

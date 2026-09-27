@@ -1,6 +1,7 @@
 "use strict";
 const resumeCsrf = document.querySelector('meta[name="csrf-token"]').content;
 const resumeStudentId = document.body.dataset.studentId;
+let resumeRoleEdited = false;
 let resumeLoaded = false, resumeLines = [], originalLines = [], undoEdits = [], resumeRevision = 0;
 let draftPdf = '', reviewPdf = '', originalPdf = '', resumeView = 'original', resumeBusy = false;
 const resumeEl = id => document.getElementById(id);
@@ -134,6 +135,22 @@ async function sendResumeChat(question) {
   finally { pending.remove(); clearTimeout(timeout); resumeLock(false); }
 }
 resumeEl('resume-chat-form').addEventListener('submit', event => { event.preventDefault(); sendResumeChat(resumeEl('resume-chat-input').value); });
+resumeEl('resume-target-role').addEventListener('input', () => { resumeRoleEdited = true; });
+function syncDiscoverRole() {
+  const role = window.gritDiscoverTargetRole || '';
+  const input = resumeEl('resume-target-role');
+  if (role && !resumeRoleEdited) input.value = role;
+  resumeEl('resume-target-question').textContent = role
+    ? `Discover selected “${role}”. Discuss focused changes for this role while keeping your LaTeX template.`
+    : 'Enter a role to discuss focused edits to your existing resume.';
+}
+syncDiscoverRole();
+window.addEventListener('hashchange', () => { if (location.hash === '#resume') syncDiscoverRole(); });
+resumeEl('resume-generate-form').addEventListener('submit', event => {
+  event.preventDefault();
+  const role = resumeEl('resume-target-role').value.trim();
+  if (role) sendResumeChat(`Help tailor my current LaTeX resume for a ${role} role. Ask me about missing details first, then propose relevant edits to existing lines. Preserve my document commands and formatting.`);
+});
 document.querySelectorAll('[data-resume-prompt]').forEach(el => el.addEventListener('click', () => sendResumeChat(el.dataset.resumePrompt)));
 document.querySelectorAll('[data-resume-view]').forEach(el => el.addEventListener('click', () => { if (!originalPdf) return; resumeView = el.dataset.resumeView; renderResumeView(); }));
 resumeEl('resume-line').addEventListener('change', () => { resumeEl('resume-line-text').value = resumeLines[Number(resumeEl('resume-line').value)]; });
