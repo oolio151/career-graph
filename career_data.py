@@ -134,4 +134,20 @@ class CareerData:
         else:
             suggestion = None
         reply = " ".join([lead, detail, "This uses synthetic alumni records on this computer, not an outside model."])
-        return {"reply": reply, "suggestion": suggestion}
+        evidence = {
+            "student": {"major": student["major"], "track": student["track"],
+                        "class_level": student["class_level"], "course_skills": student["course_skills"],
+                        "recorded_experiences": student["experiences"]},
+            "closest_common_path": ({"job_family": field["family"], "alumni_count": field["count"],
+                "share_of_employed_alumni_percent": field["percent"], "common_role_skills": field["skills"],
+                "common_job_search_routes": field["routes"]} if field else None),
+            "comparison": {"employed_alumni_count": paths["employed_count"],
+                "skills_not_found_in_resume_text": missing,
+                "recorded_experience_not_found_in_resume_text": experience},
+            "limitations": ["All alumni and outcome records are synthetic.",
+                "Course skill tags indicate exposure, not verified proficiency.",
+                "A missing phrase may reflect wording rather than a missing ability."],
+            "sources": ["students_current.csv", "transcripts.csv", "course_catalog.csv",
+                        "student_experience.csv", "alumni.csv", "employment_history.csv"],
+        }
+        return {"reply": reply, "suggestion": suggestion, "evidence": evidence}

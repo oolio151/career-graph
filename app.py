@@ -1,5 +1,6 @@
 import io
 import json
+import os
 import re
 import secrets
 import xml.etree.ElementTree as ET
@@ -12,6 +13,7 @@ from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.utils import secure_filename
 
 from career_data import CareerData
+from gemini_advisor import GeminiAdvisor, GeminiError
 from python.discover_map import discover_map
 
 MAX_RESUME = 5 * 1024 * 1024
@@ -141,6 +143,10 @@ def create_app(test_config=None):
         app.config["SECRET_KEY"] = key_file.read_text()
     dataset = CareerData(app.config["DATA_DIR"])
     app.extensions["career_data"] = dataset
+    api_key = os.environ.get("GEMINI_API_KEY", "").strip()
+    app.extensions["gemini_advisor"] = (GeminiAdvisor(
+        api_key, os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
+    ) if api_key and not app.config.get("TESTING") else None)
 
     def state():
         token = session.get("upload_id", "")
@@ -308,7 +314,19 @@ def create_app(test_config=None):
         message = request.get_json(silent=True) or {}
         try:
             text = resume_plain_text(current["extension"], file.read_bytes())[:20000]
-            return jsonify(dataset.coach_resume(current["campus_id"], text, message.get("message", "")))
+            result = dataset.coach_resume(current["campus_id"], text, message.get("message", ""))
+            advisor = app.extensions["gemini_advisor"]
+            if advisor:
+                try:
+                    result["reply"] = advisor.answer(message.get("message", ""), text, result["evidence"])
+                    result["ai"] = True
+                except GeminiError:
+                    result["reply"] += " Gemini was unavailable, so I used the local evidence summary instead."
+                    result["ai"] = False
+            else:
+                result["ai"] = False
+            result.pop("evidence", None)
+            return jsonify(result)
         except ValueError as error:
             return jsonify(error=str(error)), 400
 
