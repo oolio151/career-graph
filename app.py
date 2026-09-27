@@ -25,7 +25,7 @@ from python.connect import matches, draft_email
 from gemini import GeminiError
 
 MAX_RESUME = 5 * 1024 * 1024
-GEMINI_MODEL = "gemini-2.5-flash"
+GEMINI_MODEL = "gemini-2.5-flash-lite"
 
 
 def gemini_skill_flags(resume_text, known_skills):
@@ -424,6 +424,25 @@ def create_app(test_config=None):
             text = (draft if draft is not None else resume_plain_text(current["extension"], file.read_bytes()))[:20000]
             return jsonify(dataset.coach_resume(current["campus_id"], text, message.get("message", ""),
                                                 app.extensions["gemini"]))
+        except ValueError as error:
+            return jsonify(error=str(error)), 400
+
+    @app.post("/api/resume/generate")
+    def generate_resume():
+        current = state()
+        if not current:
+            return jsonify(error="Enter your student ID and resume to continue."), 401
+        file = resume_file(current)
+        if file is None:
+            return jsonify(error="Resume not found. Upload it again."), 404
+        payload = request.get_json(silent=True) or {}
+        target_role = payload.get("target_role", "")
+        if not isinstance(target_role, str):
+            return jsonify(error="Enter a target role first."), 400
+        try:
+            text = resume_plain_text(current["extension"], file.read_bytes())[:20000]
+            return jsonify(dataset.generate_resume(current["campus_id"], text, target_role,
+                                                    app.extensions["gemini"]))
         except ValueError as error:
             return jsonify(error=str(error)), 400
 

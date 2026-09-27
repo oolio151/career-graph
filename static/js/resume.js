@@ -14,6 +14,7 @@ let draftResumeText = "";
 let activeResumeView = "draft";
 let latexSource = "";
 let renderedPdfUrl = "";
+let resumeRoleEdited = false;
 
 const latexEscape = (value) => String(value ?? "")
   .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
@@ -26,7 +27,7 @@ function draftToLatex(text) {
   const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   const name = latexEscape(lines.shift() || "Your Name");
   const contact = latexEscape(lines.shift() || "email@example.com | linkedin.com/in/you | github.com/you");
-  const sectionNames = new Set(["Education", "Experience", "Projects", "Technical Skills", "Leadership", "Skills", "Research"]);
+  const sectionNames = new Set(["Education", "Experience", "Projects", "Projects & Leadership", "Certifications", "Coursework", "Technical Skills", "Leadership", "Skills", "Research"]);
   let body = "";
   let listOpen = false;
   for (const raw of lines) {
@@ -231,6 +232,28 @@ async function loadResume() {
   }
 }
 
+function syncDiscoverRole() {
+  const input = document.querySelector("#resume-target-role");
+  const question = document.querySelector("#resume-target-question");
+  const role = window.gritDiscoverTargetRole || "";
+  if (!role || resumeRoleEdited) {
+    question.textContent = role
+      ? `Discover selected “${role}”. Is that the role you are aiming for, or do you have another role in mind?`
+      : "Select a job in Discover first, or enter another role you have in mind.";
+    return;
+  }
+  input.value = role;
+  question.textContent = `Discover selected “${role}”. Is that the role you are aiming for, or do you have another role in mind?`;
+}
+
+document.querySelector("#resume-target-role").addEventListener("input", () => {
+  resumeRoleEdited = true;
+});
+window.addEventListener("hashchange", () => {
+  if (location.hash === "#resume") syncDiscoverRole();
+});
+syncDiscoverRole();
+
 document.querySelector("#resume-upload-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = event.currentTarget;
@@ -262,9 +285,50 @@ document.querySelector("#resume-upload-form").addEventListener("submit", async (
   }
 });
 
+document.querySelector("#resume-generate-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const role = document.querySelector("#resume-target-role").value.trim();
+  const status = document.querySelector("#resume-generate-status");
+  const button = document.querySelector("#generate-resume");
+  if (!role) return;
+  if (!resumeRoleEdited && window.gritDiscoverTargetRole) {
+    const confirmed = window.confirm(`Discover selected “${window.gritDiscoverTargetRole}”. Is that the role you are aiming for? Choose Cancel to enter another role.`);
+    if (!confirmed) {
+      status.textContent = "Enter another role above, then generate the tailored draft.";
+      document.querySelector("#resume-target-role").focus();
+      return;
+    }
+  }
+  button.disabled = true;
+  status.textContent = "Building a role-targeted draft…";
+  try {
+    const data = await resumeApi("/api/resume/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": resumeCsrf },
+      body: JSON.stringify({ target_role: role }),
+    });
+    draftResumeText = data.draft;
+    latexSource = draftToLatex(draftResumeText);
+    activeResumeView = "draft";
+    renderResumeView();
+    updateChangeCount();
+    status.textContent = data.source === "gemini"
+      ? `Draft tailored for ${role} with Gemini, grounded in your uploaded resume and student record.`
+      : `Draft tailored for ${role} using your uploaded resume and student record.`;
+    if (data.note) resumeMessage(`Gemini was unavailable, so I used the local grounded draft. ${data.note}`, "advisor");
+  } catch (error) {
+    status.textContent = error.message || "Could not generate a tailored draft.";
+  } finally {
+    button.disabled = false;
+  }
+});
+
 async function sendResumeChat(question) {
   const value = question.trim().slice(0, 500);
   if (!value) return;
+  const prompts = document.querySelector(".resume-prompts");
+  if (prompts) prompts.hidden = true;
   resumeMessage(value, "user");
   document.querySelector("#resume-chat-input").value = "";
   const button = document.querySelector("#resume-chat-form button");
@@ -287,10 +351,16 @@ async function sendResumeChat(question) {
 
 document.querySelector("#resume-chat-form").addEventListener("submit", (event) => {
   event.preventDefault();
+  const prompts = document.querySelector(".resume-prompts");
+  if (prompts) prompts.hidden = true;
   sendResumeChat(document.querySelector("#resume-chat-input").value);
 });
 document.querySelectorAll("[data-resume-prompt]").forEach((button) => {
-  button.addEventListener("click", () => sendResumeChat(button.dataset.resumePrompt));
+  button.addEventListener("click", () => {
+    const prompts = document.querySelector(".resume-prompts");
+    if (prompts) prompts.hidden = true;
+    sendResumeChat(button.dataset.resumePrompt);
+  });
 });
 document.querySelectorAll("[data-resume-view]").forEach((button) => {
   button.addEventListener("click", () => setResumeView(button.dataset.resumeView));

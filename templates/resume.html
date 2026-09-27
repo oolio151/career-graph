@@ -31,6 +31,15 @@
           <a class="secondary-button" href="/api/resume">Original</a>
         </div>
       </div>
+      <form id="resume-generate-form" class="resume-generate-form">
+        <label for="resume-target-role">Target role</label>
+        <p id="resume-target-question" class="field-hint">Select a job in Discover first, or enter another role you have in mind.</p>
+        <div class="resume-generate-row">
+          <input id="resume-target-role" maxlength="160" placeholder="e.g., Data Analyst" autocomplete="off" required>
+          <button type="submit" class="primary-button" id="generate-resume">Generate tailored draft</button>
+        </div>
+        <p id="resume-generate-status" class="field-hint" role="status">Uses your uploaded resume and grounded student records. Gemini adds role-specific wording when configured.</p>
+      </form>
       <div class="resume-tabs" role="tablist" aria-label="Resume views">
         <button type="button" role="tab" aria-selected="true" data-resume-view="draft">Draft</button>
         <button type="button" role="tab" aria-selected="false" data-resume-view="changes">Changes <span id="resume-change-count">0</span></button>

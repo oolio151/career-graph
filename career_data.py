@@ -10,6 +10,19 @@ EMPLOYED = {"Employed Full-Time", "Employed Part-Time"}
 RESUME_PROMPT_LIMIT = 6000
 SUGGESTION_MARKER = "SUGGESTED RESUME LINE:"
 
+RESUME_GENERATION_SYSTEM = """You are a careful resume editor for a university career tool.
+Create a concise, one-page resume tailored to the requested target role.
+Use the uploaded resume as the primary source and use the FACTS BLOCK only to fill
+supported education, coursework, skills, certifications, and recorded activities.
+Never invent an employer, date, tool, metric, project result, credential, or skill.
+When a useful detail is missing, write a short bracketed prompt such as [add the
+tool used] or [add a measurable result] so the student can complete it.
+Do not include the campus ID, synthetic-data labels, GPA unless it is at least 3.5,
+or claims about hiring probability. Keep the student's name and actual experience.
+Return only plain resume text, with this order where applicable:
+name; contact line; Education; Experience; Projects & Leadership; Certifications;
+Coursework; Technical Skills. Use short bullet lines beginning with '-'."""
+
 SYSTEM_INSTRUCTION = """You are a resume advisor for a university career tool.
 
 You answer using ONLY the FACTS block you are given. Every claim must trace back to a \
@@ -231,6 +244,67 @@ class CareerData:
                     "model": gemini.model, "grounded_in": ["students_current.csv", "alumni.csv",
                                                           "employment_history.csv", "uploaded resume"]}
         return fallback
+
+    def generate_resume(self, campus_id, resume_text, target_role, gemini=None):
+        """Generate a role-targeted draft grounded in the uploaded resume and dataset."""
+        role = (target_role or "").strip()
+        if not role:
+            raise ValueError("Enter a target role first.")
+        if len(role) > 160:
+            raise ValueError("Keep the target role under 160 characters.")
+        fallback = self._generated_resume(campus_id, resume_text, role)
+        if gemini is None or not gemini.enabled:
+            return {"draft": fallback, "source": "local", "model": "on-device rules",
+                    "target_role": role}
+        prompt = (f"{self.resume_context(campus_id, resume_text)}\n\n"
+                  f"TARGET ROLE: {role}\n\n"
+                  "Write the tailored resume now. Preserve facts from the uploaded resume, "
+                  "prioritize evidence relevant to the target role, and use bracketed prompts "
+                  "for missing details instead of making them up.")
+        try:
+            draft = gemini.generate(prompt, RESUME_GENERATION_SYSTEM).strip()
+        except GeminiError as error:
+            return {"draft": fallback, "source": "local", "model": "on-device rules",
+                    "target_role": role, "note": str(error)}
+        if draft.startswith("```"):
+            draft = re.sub(r"^```(?:text|markdown)?\s*|\s*```$", "", draft, flags=re.I).strip()
+        return {"draft": draft or fallback, "source": "gemini", "model": gemini.model,
+                "target_role": role}
+
+    def _generated_resume(self, campus_id, resume_text, role):
+        student = self.profile(campus_id)
+        lines = [student["full_name"],
+                 f"Baltimore, MD | {student['major']} | {student['track']}",
+                 "", "Education", "University of Maryland, Baltimore County",
+                 f"B.S. in {student['major']}, {student['track']} track | Expected {student['expected_graduation_term']}"]
+        if student.get("cumulative_gpa") and float(student["cumulative_gpa"]) >= 3.5:
+            lines[-1] += f" | GPA {student['cumulative_gpa']}"
+        lines += ["", "Experience"]
+        for item in student["experiences"]:
+            if item["experience_type"] == "Certification":
+                continue
+            lines += [item["experience_name"], f"{item['organization']} | {item['term']}",
+                      f"- [Describe your contribution to {role} work in this experience]",
+                      "- [Add the tools, methods, or data you used]",
+                      "- [Add a measurable result or outcome]"]
+        lines += ["", "Projects & Leadership"]
+        for item in student["experiences"]:
+            if item["experience_type"] in {"Hackathon", "Peer Mentor", "Competitive Team", "Student Organization"}:
+                lines += [item["experience_name"], f"{item['organization']} | {item['term']}",
+                          f"- {item['outcome']}; [add the work that best supports {role}]"]
+        certifications = [item for item in student["experiences"] if item["experience_type"] == "Certification"]
+        if certifications:
+            lines += ["", "Certifications"] + [f"{item['experience_name']} - {item['organization']} | {item['term']}" for item in certifications]
+        passed = {r["course_id"] for r in self.transcripts[campus_id] if r["grade"] in {"A", "B", "C", "D"}}
+        if passed:
+            lines += ["", "Coursework"]
+            for cid in sorted(passed):
+                course = self.catalog.get(cid)
+                if course:
+                    lines.append(f"{course['course_title']} ({cid})")
+        lines += ["", "Technical Skills", "Languages: " + ", ".join(sorted(set(["C++"] + [s for s in student["course_skills"] if s in {"Python", "Java", "JavaScript", "SQL"}]))),
+                  "Concepts: " + ", ".join(student["course_skills"])]
+        return "\n".join(lines)
 
     def _split_suggestion(self, text):
         """Pull the optional pasteable line out of the model reply.

@@ -14,6 +14,7 @@ let selectedNextJob = "";
 let aiSkills = new Set();
 let requestVersion = 0;
 let hasArrived = false;
+window.gritDiscoverTargetRole = "";
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
 
 async function api(url, options) {
@@ -303,6 +304,7 @@ function renderDiscover(data) {
   if (!data.first_jobs.slice(0, 5).some(job => job.title === selectedFamily)) selectedFamily = data.first_jobs[0]?.title || "";
   const job = data.first_jobs.find(job => job.title === selectedFamily);
   if (!job?.next_roles.slice(0, 5).some(role => role.title === selectedNextJob)) selectedNextJob = "";
+  window.gritDiscoverTargetRole = selectedNextJob || selectedFamily || "";
   setResultsHidden(false);
   renderAlumniMap(data);
   renderJobDetail(job, data);

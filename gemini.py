@@ -8,7 +8,7 @@ import urllib.error
 import urllib.request
 
 ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-DEFAULT_MODEL = "gemini-3-flash-preview"
+DEFAULT_MODEL = "gemini-2.5-flash-lite"
 TIMEOUT = 30
 # Gemini 3 reasons by default and its thinking tokens are drawn from the same
 # maxOutputTokens budget, so a small cap silently truncates the visible reply.
@@ -58,8 +58,19 @@ class Gemini:
             with urllib.request.urlopen(request, timeout=self.timeout) as response:
                 payload = json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as error:
-            # Detail can name the model or the key; keep the status, drop the body.
-            raise GeminiError(f"Gemini returned HTTP {error.code}.") from None
+            # Gemini puts the useful quota/billing diagnosis in the JSON body.
+            # Preserve that message without ever echoing the API key.
+            detail = ""
+            try:
+                body = json.loads(error.read().decode("utf-8"))
+                detail = ((body.get("error") or {}).get("message") or "").strip()
+                reason = ((body.get("error") or {}).get("status") or "").strip()
+                if reason and reason.lower() not in detail.lower():
+                    detail = f"{reason}: {detail}" if detail else reason
+            except (UnicodeDecodeError, ValueError, AttributeError):
+                pass
+            suffix = f": {detail}" if detail else ""
+            raise GeminiError(f"Gemini returned HTTP {error.code}{suffix}") from None
         except (urllib.error.URLError, TimeoutError, OSError) as error:
             raise GeminiError(f"Could not reach Gemini: {error}.") from None
         except (ValueError, KeyError):
