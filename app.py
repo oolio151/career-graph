@@ -6,6 +6,8 @@ import secrets
 import xml.etree.ElementTree as ET
 import zipfile
 import zlib
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 from pathlib import Path
 
 from flask import Flask, jsonify, redirect, render_template, request, send_file, session, url_for
@@ -20,6 +22,36 @@ from python.connect import matches, draft_email
 from gemini import GeminiError
 
 MAX_RESUME = 5 * 1024 * 1024
+GEMINI_MODEL = "gemini-2.5-flash"
+
+
+def gemini_skill_flags(resume_text, known_skills):
+    """Return resume skills selected from the dataset vocabulary by Gemini."""
+    api_key = os.environ.get("GEMINI_API_KEY", "").strip()
+    if not api_key or not resume_text or not known_skills:
+        return {"skills": [], "output": "Gemini analysis is not configured."}
+    prompt = (
+        "Review this resume and select only skills explicitly supported by its text. "
+        "Return JSON only in the form {\\\"skills\\\":[\\\"...\\\"]}. "
+        "Choose only from this allowed vocabulary: " + ", ".join(sorted(known_skills)) +
+        "\\n\\nResume:\\n" + resume_text[:20000]
+    )
+    payload = json.dumps({"contents": [{"parts": [{"text": prompt}]}]}).encode()
+    request = Request(
+        f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={api_key}",
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urlopen(request, timeout=25) as response:
+            result = json.loads(response.read())
+        text = result["candidates"][0]["content"]["parts"][0]["text"]
+        text = re.sub(r"^```(?:json)?|```$", "", text.strip(), flags=re.I | re.M).strip()
+        selected = json.loads(text).get("skills", [])
+        return {"skills": sorted({skill for skill in selected if skill in known_skills}), "output": text}
+    except (HTTPError, URLError, TimeoutError, KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError):
+        return {"skills": [], "output": "Gemini analysis was unavailable."}
 
 
 def validate_resume(upload):
@@ -171,6 +203,9 @@ def create_app(test_config=None):
                 file.unlink(missing_ok=True)
         session.pop("upload_id", None)
 
+    def resume_skill_cache():
+        return private / f"{session['upload_id']}.skills.json"
+
     @app.before_request
     def protect_local_session():
         if "csrf" not in session:
@@ -251,6 +286,8 @@ def create_app(test_config=None):
             return jsonify(error="Could not save your resume. Please try again."), 500
         clear_upload()
         session["upload_id"] = token
+        if request.form.get("school") == "umbc":
+            session["school"] = "umbc"
         return jsonify(next="/app#discover")
 
     @app.get("/api/session")
@@ -298,6 +335,28 @@ def create_app(test_config=None):
             return jsonify(error=str(error)), 400
         except GeminiError as error:
             return jsonify(error=str(error)), 503
+
+    @app.get("/api/resume/skills")
+    def resume_skills():
+        current = state()
+        if not current or not current.get("filename"):
+            return jsonify(skills=[], cached=False, available=False)
+        cache = resume_skill_cache()
+        try:
+            if cache.exists():
+                cached = json.loads(cache.read_text())
+                return jsonify(skills=cached.get("skills", []), output=cached.get("output", ""), cached=True, available=True)
+            file = resume_file(current)
+            if file is None:
+                return jsonify(skills=[], cached=False, available=False)
+            paths = dataset.discover(current["campus_id"], {})
+            known = {skill for field in paths["fields"] for skill in field["skills"]}
+            analysis = gemini_skill_flags(resume_plain_text(current["extension"], file.read_bytes()), known)
+            cache.write_text(json.dumps(analysis))
+            cache.chmod(0o600)
+            return jsonify(**analysis, cached=False, available=True)
+        except OSError:
+            return jsonify(skills=[], cached=False, available=False)
 
     def resume_file(current):
         file = private / f"{session['upload_id']}{current['extension']}"
@@ -366,3 +425,7 @@ def create_app(test_config=None):
         return jsonify(next="/")
 
     return app
+
+
+# Module-level WSGI entry point for deployment services.
+app = create_app()

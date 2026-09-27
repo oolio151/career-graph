@@ -11,6 +11,7 @@ let studentProfile;
 let discoverData;
 let selectedFamily = "";
 let selectedNextJob = "";
+let aiSkills = new Set();
 let requestVersion = 0;
 
 async function api(url, options) {
@@ -42,9 +43,6 @@ function renderProfile(data) {
   const gpaFilter = document.querySelector("#filter-gpa");
   gpaFilter.disabled = profile.cumulative_gpa === null;
   gpaFilter.closest("label").title = profile.cumulative_gpa === null ? "No GPA yet" : "";
-  document.querySelector("#filter-explanation").textContent = profile.cumulative_gpa === null
-    ? "No GPA yet, so GPA matching is unavailable. Internships match 0, 1, or 2 or more."
-    : "GPA compares your current GPA with graduates’ final GPA. Internships match 0, 1, or 2 or more.";
   document.querySelector("#profile-content").innerHTML = `
     <dl class="profile-facts">
       <div><dt>GPA</dt><dd>${escapeHtml(profile.cumulative_gpa ?? "Not available yet")}</dd></div>
@@ -90,8 +88,18 @@ function renderJobDetail(job, data) {
        <p class="share-figure"><strong>${job.percent}%</strong><span>${job.count} of ${data.employed_count} graduates who reported a first job.</span></p>
        <p class="field-hint">${job.with_next_job} of these ${job.count} alumni have a second job recorded.</p></div>
        <div><h3>How they found it</h3><ul class="compact-list">${job.routes.map(route => `<li><span>${escapeHtml(route.name)}</span><strong>${route.percent}% <small>${route.count} of ${job.count}</small></strong></li>`).join("")}</ul></div>
-       <div><h3>Skills these jobs asked for</h3><div class="tags">${job.skills.map(skill => `<span class="tag ${covered.includes(skill) ? "covered" : ""}">${escapeHtml(skill)}</span>`).join("") || "No skills recorded."}</div>
-       <p class="field-hint">Highlighted skills appear in your passed courses; they are not verified proficiency.</p></div>`;
+       <div><h3>Skills these jobs asked for</h3><div class="tags">${job.skills.map(skill => `<span class="tag ${aiSkills.has(skill) ? "ai-covered" : covered.includes(skill) ? "covered" : ""}">${escapeHtml(skill)}</span>`).join("") || "No skills recorded."}</div>
+       <p class="field-hint">Blue highlights are skills identified in your uploaded resume. Gold highlights appear in passed courses.</p></div>`;
+}
+
+async function loadResumeSkills() {
+  try {
+    const result = await api("/api/resume/skills");
+    aiSkills = new Set(result.skills || []);
+    if (discoverData) renderDiscover(discoverData);
+  } catch {
+    aiSkills = new Set();
+  }
 }
 
 function renderAlumniMap(data) {
@@ -222,6 +230,7 @@ document.querySelector("#replace-resume-form").addEventListener("submit", async 
     renderProfile(await api("/api/session"));
     status.textContent = "Resume replaced. The previous file was deleted.";
     document.querySelector("#replace-resume-form").reset();
+    await loadResumeSkills();
   } catch (error) {
     status.textContent = error.message || "Upload failed. Try again.";
   } finally {
@@ -232,6 +241,7 @@ document.querySelector("#replace-resume-form").addEventListener("submit", async 
 async function initializeDiscover() {
   try {
     renderProfile(await api("/api/session"));
+    await loadResumeSkills();
     await loadDiscover();
   } catch (error) {
     document.querySelector("#discover-status").textContent = error.message || "Could not load your profile.";

@@ -1487,6 +1487,7 @@ th { background: #f4eee5; position: sticky; top: 0; }
 .alumni-job-detail h2 { font-size:26px; margin:8px 0 18px; }
 .alumni-job-detail h3 { font-size:16px; margin-bottom:14px; }
 .alumni-job-detail .covered { background:var(--yellow); color:var(--ink); }
+.alumni-job-detail .ai-covered { background:#cfeeff; color:#174e70; border-color:#8bc9ec; box-shadow:0 0 0 1px #b4e2fa; }
 
 /* School selection starts in the original teal palette. */
 .school-entry:not([data-school="umbc"]) {
@@ -1522,6 +1523,13 @@ body:has(#view-discover), body:has(#view-resume) {
   background:var(--paper);
 }
 .site-header { min-height:88px; border-bottom:1px solid var(--line); margin-bottom:28px; }
+.header-profile { flex:1; min-width:0; margin:0 12px 0 18px; padding:0; border:0; background:transparent; box-shadow:none; }
+.header-profile h2 { margin:0; font-size:16px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.header-profile .field-hint { margin:0; font-size:10px; }
+.header-profile .supporting-copy { margin:2px 0 0; font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.header-profile .profile-actions { gap:8px; }
+.header-profile .secondary-button { min-height:36px; padding:7px 10px; font-size:12px; white-space:nowrap; }
+.header-profile .inline-link { font-size:11px; white-space:nowrap; }
 .brand-symbol { transform:none; border:0; border-radius:10px; box-shadow:none; }
 .nav-item { color:var(--muted); border-radius:9px; font-weight:500; }
 .nav-item.active { background:#22221f; color:#ffcc00; box-shadow:none; }
@@ -1615,3 +1623,5 @@ body:has(#view-discover), body:has(#view-resume) {
 .email-footer { padding: 16px 30px 24px; border-top: 1px solid var(--line); }
 #connect-email-status { font-size: 13px; margin: 0 0 12px; }
 #connect-email .email-note { font-size: 12px; color: var(--muted); margin: 14px 0 0; }
+
+body:not([data-school="umbc"]) .school-logo { display:none; }
