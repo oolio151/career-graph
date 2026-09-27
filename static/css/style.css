@@ -1439,8 +1439,26 @@ th { background: #f4eee5; position: sticky; top: 0; }
 .resume-stage { min-width: 0; display: flex; flex-direction: column; background: #efe6d8; border: 2px solid var(--line); border-radius: 22px; overflow: hidden; }
 .resume-stage-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; background: white; border-bottom: 1px solid var(--line); }
 .resume-stage-bar h2 { font-size: 16px; letter-spacing: -.2px; overflow-wrap: anywhere; }
+.resume-stage-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+.resume-stage-actions .secondary-button { min-height:40px; padding:9px 12px; }
+.resume-tabs { display:flex; gap:4px; padding:8px 14px 0; background:#fff; border-bottom:1px solid var(--line); }
+.resume-tabs button { min-height:42px; padding:8px 14px; border:0; border-bottom:3px solid transparent; background:transparent; color:var(--muted); font-size:13px; font-weight:600; }
+.resume-tabs button[aria-selected="true"] { color:var(--ink); border-bottom-color:#d4ac32; }
+.resume-tabs span { display:inline-grid; place-items:center; min-width:20px; height:20px; margin-left:4px; padding:0 5px; border-radius:10px; background:#eeece4; font-size:11px; }
 #resume-canvas { flex: 1; min-height: 70vh; overflow: auto; }
 .resume-frame { display: block; width: 100%; height: 100%; min-height: 70vh; border: 0; background: white; }
+.resume-draft { display:block; width:min(760px, calc(100% - 40px)); min-height:calc(70vh - 40px); margin:20px auto; padding:48px 44px 64px; resize:vertical; border:1px solid #dedbd0; border-radius:3px; background:white; color:var(--ink); box-shadow:0 6px 24px #20201e12; font:15px/1.65 Rubik,system-ui,sans-serif; }
+.resume-draft:focus { outline:3px solid #ffcc0066; outline-offset:2px; border-color:#b48d1b; }
+.resume-diff { width:min(820px, calc(100% - 32px)); margin:20px auto; border:1px solid #d8d6cd; border-radius:10px; overflow:hidden; background:white; }
+.diff-line { display:grid; grid-template-columns:30px minmax(0,1fr); min-height:28px; border-bottom:1px solid #efede7; font-size:13px; line-height:1.55; }
+.diff-line:last-child { border-bottom:0; }
+.diff-line > span { padding:4px 8px; text-align:center; color:#77756d; user-select:none; }
+.diff-line code { padding:4px 10px; overflow-wrap:anywhere; white-space:pre-wrap; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+.diff-line.add { background:#eaf6ec; }
+.diff-line.add > span { background:#ccebd2; color:#216e39; }
+.diff-line.remove { background:#fff0ef; }
+.diff-line.remove > span { background:#ffd7d5; color:#9f2520; }
+.resume-original { width:min(760px, calc(100% - 40px)); min-height:calc(70vh - 40px); margin:20px auto; padding:40px; overflow-wrap:anywhere; white-space:pre-wrap; background:white; border:1px solid #dedbd0; font:14px/1.6 Rubik,system-ui,sans-serif; }
 .resume-sheet { width: min(720px, calc(100% - 32px)); margin: 20px auto; background: white; min-height: calc(70vh - 40px); padding: 48px 44px 64px; box-shadow: 0 12px 28px #211a3518; }
 .resume-sheet p { font-size: 15px; line-height: 1.55; margin: 0 0 12px; }
 .resume-sheet:focus { outline: 3px solid var(--purple); outline-offset: 4px; }

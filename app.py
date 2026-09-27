@@ -313,12 +313,18 @@ def create_app(test_config=None):
             return jsonify(error="Resume not found. Upload it again."), 404
         message = request.get_json(silent=True) or {}
         try:
-            text = resume_plain_text(current["extension"], file.read_bytes())[:20000]
+            original = resume_plain_text(current["extension"], file.read_bytes())[:20000]
+            draft = message.get("draft")
+            if draft is not None and not isinstance(draft, str):
+                return jsonify(error="The resume draft must be text."), 400
+            text = (draft if draft is not None else original)[:20000]
             result = dataset.coach_resume(current["campus_id"], text, message.get("message", ""))
             advisor = app.extensions["gemini_advisor"]
             if advisor:
                 try:
-                    result["reply"] = advisor.answer(message.get("message", ""), text, result["evidence"])
+                    answer = advisor.answer(message.get("message", ""), text, result["evidence"])
+                    result["reply"] = answer["reply"]
+                    result["suggestion"] = answer["suggestion"] or result.get("suggestion")
                     result["ai"] = True
                 except GeminiError:
                     result["reply"] += " Gemini was unavailable, so I used the local evidence summary instead."

@@ -120,6 +120,8 @@ class AppTests(unittest.TestCase):
         self.assertIn("Computer Science", chat.json["reply"])
         self.assertIn("synthetic", chat.json["reply"])
         self.assertTrue(chat.json["suggestion"])
+        bad_draft = self.client.post("/api/resume/chat", json={"message": "Improve it", "draft": ["not", "text"]}, headers={"X-CSRF-Token": self.csrf})
+        self.assertEqual(bad_draft.status_code, 400)
         self.assertEqual(self.client.post("/api/resume/chat", json={"message": "  "}, headers={"X-CSRF-Token": self.csrf}).status_code, 400)
         self.assertIn(b'id="view-resume"', self.client.get("/app").data)
         pdf = b"%PDF-1.1\n1 0 obj<</Length 44>>stream\nBT (Example Student) Tj [(Campus)-20(Editor) 250(Python)] TJ ET\nendstream\nendobj\n%%EOF\n"
