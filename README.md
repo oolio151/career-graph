@@ -38,7 +38,7 @@ environment and never sent to the browser. To enable it:
 cp .env.example .env
 # then put your key in .env
 GEMINI_API_KEY=your-key-here
-GEMINI_MODEL=gemini-3-flash-preview
+GEMINI_MODEL=gemini-3.5-flash-lite
 ```
 
 Restart the server. The chat header shows which engine answered, so a demo is never
@@ -48,9 +48,16 @@ ambiguous about whether a reply came from a model or from the local rules.
 builds a facts block from `students_current.csv`, `alumni.csv`, and `employment_history.csv` —
 the student's record and course skills, the alumni cohort size, first-job shares, the skills
 those first jobs asked for, and which of them the student's passed courses do *not* cover —
-and the system instruction requires every claim to trace back to a number in that block. The
-record ID is included so replies can cite it. The model cannot invent employers, salaries, or
-outcomes, and is instructed to say when the block does not answer the question.
+and keeps it available as optional background. The advisor uses personal details and statistics
+only when relevant to the question, and can discuss general career topics such as hackathons
+without reciting the student's record. Specific dataset claims must use the supplied evidence;
+resume rewrites must preserve supported experience. Synthetic-data reminders accompany dataset
+claims rather than every conversation turn.
+
+**Conversation memory.** Resume chat includes up to eight previous successful Gemini
+exchanges, capped at 12,000 characters, alongside the latest profile and resume context.
+History is stored server-side with the session's uploaded files and survives page refreshes.
+Replacing the resume or clearing the student session deletes that history.
 
 **Fallback.** If `GEMINI_API_KEY` is unset, or the API is unreachable, rate-limited, or returns
 nothing usable, `coach_resume` falls back to the deterministic on-device rules and sets a `note`
@@ -58,8 +65,7 @@ field explaining why. The demo degrades instead of breaking. Responses carry `so
 (`gemini` or `local`), `model`, and `grounded_in` so the UI can label the source honestly.
 
 Gemini is called over `urllib` from the standard library in `gemini.py`, so the project keeps
-its two dependencies. `GEMINI_MODEL` is a plain string, so `gemini-3.5-flash` works if you prefer
-the GA model over the preview.
+its two dependencies. Set `GEMINI_MODEL` to override the default `gemini-3.5-flash-lite` model.
 
 ## Where to build
 
