@@ -14,10 +14,10 @@
     </title>
     <link
       rel="stylesheet"
-      href="{{ url_for('static', filename='css/style.css', v=13) }}"
+      href="{{ url_for('static', filename='css/style.css', v=21) }}"
     />
     {% block scripts %}<script src="{{ url_for('static', filename='js/main.js', v=11) }}" defer></script>
-    <script src="{{ url_for('static', filename='js/discover.js', v=11) }}" defer></script>
+    <script src="{{ url_for('static', filename='js/discover.js', v=15) }}" defer></script>
     <script src="{{ url_for('static', filename='js/resume.js', v=5) }}" defer></script>{% endblock %}
   </head>
   <body {% block body_attributes %}{% endblock %} data-student-id="{{ student_id|default('') }}">
