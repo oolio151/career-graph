@@ -10,18 +10,18 @@
       content="Explore the connections between your degree, campus experiences, and your next career chapter."
     />
     <title>
-      {% block title %}Grit — Find your next chapter{% endblock %}
+      {% block title %}Career Graph — Find your next chapter{% endblock %}
     </title>
     <link
       rel="stylesheet"
-      href="{{ url_for('static', filename='css/style.css', v=15) }}"
+      href="{{ url_for('static', filename='css/style.css', v=21) }}"
     />
     {% block scripts %}<script src="{{ url_for('static', filename='js/main.js', v=12) }}" defer></script>
-    <script src="{{ url_for('static', filename='js/discover.js', v=11) }}" defer></script>
-    <script src="{{ url_for('static', filename='js/resume.js', v=5) }}" defer></script>
+    <script src="{{ url_for('static', filename='js/discover.js', v=16) }}" defer></script>
+    <script src="{{ url_for('static', filename='js/resume.js', v=6) }}" defer></script>
     <script src="{{ url_for('static', filename='js/connect.js', v=2) }}" defer></script>{% endblock %}
   </head>
-  <body {% block body_attributes %}data-school="{{ session.get('school', '') }}"{% endblock %} data-student-id="{{ student_id|default('') }}">
+  <body {% block body_attributes %}{% endblock %} data-student-id="{{ student_id|default('') }}">
     <a class="skip-link" href="#main">Skip to content</a>
     {% block content %}{% endblock %}
   </body>

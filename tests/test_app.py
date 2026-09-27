@@ -218,6 +218,19 @@ class AppTests(unittest.TestCase):
         self.app.extensions["gemini"] = Gemini("")
         self.assertEqual(self.client.get("/api/resume/chat/config").json["engine"], "local")
 
+    def test_latex_renderer_validates_source(self):
+        self.enroll()
+        headers = {"X-CSRF-Token": self.csrf}
+        missing_document = self.client.post("/api/resume/render", json={"source": "hello"}, headers=headers)
+        self.assertEqual(missing_document.status_code, 400)
+        unsafe = self.client.post(
+            "/api/resume/render",
+            json={"source": r"\documentclass{article}\begin{document}\input{secret}\end{document}"},
+            headers=headers,
+        )
+        self.assertEqual(unsafe.status_code, 400)
+        self.assertIn("disabled", unsafe.json["error"])
+
 
 class CalculationTests(unittest.TestCase):
     def test_person_names_support_full_partial_and_legacy_records(self):

@@ -13,6 +13,8 @@ let selectedFamily = "";
 let selectedNextJob = "";
 let aiSkills = new Set();
 let requestVersion = 0;
+let hasArrived = false;
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
 
 async function api(url, options) {
   const response = await fetch(url, options);
@@ -42,7 +44,11 @@ function renderProfile(data) {
     `${profile.class_level} · ${profile.track} · GPA ${profile.cumulative_gpa ?? "not available yet"} · ${profile.credits_earned} of ${profile.credits_required} credits`;
   const gpaFilter = document.querySelector("#filter-gpa");
   gpaFilter.disabled = profile.cumulative_gpa === null;
+  if (gpaFilter.disabled) gpaFilter.checked = false;
   gpaFilter.closest("label").title = profile.cumulative_gpa === null ? "No GPA yet" : "";
+  document.querySelector("#filter-explanation").textContent = profile.cumulative_gpa === null
+    ? "No GPA yet, so GPA matching is unavailable. Internships match 0, 1, or 2 or more."
+    : "GPA compares your current GPA with graduates’ final GPA. Internships match 0, 1, or 2 or more.";
   document.querySelector("#profile-content").innerHTML = `
     <dl class="profile-facts">
       <div><dt>GPA</dt><dd>${escapeHtml(profile.cumulative_gpa ?? "Not available yet")}</dd></div>
@@ -73,23 +79,51 @@ function renderProfile(data) {
 
 }
 
+// The sheet rises whenever its job changes while it is peeking from the bottom of the screen.
+let peekText = "";
+let hasRisen = false;
+function riseSheet() {
+  const sheet = document.querySelector("#detail-sheet");
+  const top = sheet.getBoundingClientRect().top;
+  if (reduceMotion.matches || top < innerHeight * .6 || top > innerHeight) return;
+  sheet.style.animationDelay = hasRisen ? "0s" : ".3s";
+  hasRisen = true;
+  sheet.classList.remove("rising");
+  void sheet.offsetWidth;
+  sheet.classList.add("rising");
+  sheet.addEventListener("animationend", () => sheet.classList.remove("rising"), {once: true});
+}
+
 function renderJobDetail(job, data) {
   const panel = document.querySelector("#field-detail");
-  if (!job) { panel.hidden = true; return; }
-  panel.hidden = false;
+  const drawer = document.querySelector("#detail-drawer");
+  if (!job) { drawer.hidden = true; return; }
+  drawer.hidden = false;
   const next = job.next_roles.find(role => role.title === selectedNextJob);
   const covered = job.skills.filter(skill => studentProfile.course_skills.includes(skill));
-  panel.innerHTML = next
-    ? `<p class="role-type">Recorded second job after ${escapeHtml(job.title)}</p>
+  document.querySelector("#peek-title").textContent = next ? next.title : job.title;
+  document.querySelector("#peek-figure").textContent = next
+    ? `${next.percent}% of second jobs after ${job.title}`
+    : `${job.percent}% of reported first jobs`;
+  const peek = document.querySelector("#detail-drawer .sheet-peek").textContent;
+  if (peek !== peekText) { peekText = peek; riseSheet(); }
+  const html = next
+    ? `<div><p class="role-type">Recorded second job after ${escapeHtml(job.title)}</p>
        <h2>${escapeHtml(next.title)}</h2>
        <p class="share-figure"><strong>${next.percent}%</strong><span>${next.count} of ${job.with_next_job} alumni with a second job recorded after ${escapeHtml(job.title)}.</span></p>
-       <p class="field-hint">These are observed transitions, not predictions. Select a first-job node to see its hiring routes and skills.</p>`
+       <p class="field-hint">These are observed transitions, not predictions. Select a first-job node to see its hiring routes and skills.</p></div>`
     : `<div><p class="role-type">Reported first job</p><h2>${escapeHtml(job.title)}</h2>
        <p class="share-figure"><strong>${job.percent}%</strong><span>${job.count} of ${data.employed_count} graduates who reported a first job.</span></p>
        <p class="field-hint">${job.with_next_job} of these ${job.count} alumni have a second job recorded.</p></div>
        <div><h3>How they found it</h3><ul class="compact-list">${job.routes.map(route => `<li><span>${escapeHtml(route.name)}</span><strong>${route.percent}% <small>${route.count} of ${job.count}</small></strong></li>`).join("")}</ul></div>
        <div><h3>Skills these jobs asked for</h3><div class="tags">${job.skills.map(skill => `<span class="tag ${aiSkills.has(skill) ? "ai-covered" : covered.includes(skill) ? "covered" : ""}">${escapeHtml(skill)}</span>`).join("") || "No skills recorded."}</div>
        <p class="field-hint">Blue highlights are skills identified in your uploaded resume. Gold highlights appear in passed courses.</p></div>`;
+  if (panel.innerHTML === html) return;
+  panel.innerHTML = html;
+  panel.classList.remove("swap");
+  void panel.offsetWidth;
+  panel.classList.add("swap");
+  panel.addEventListener("animationend", () => panel.classList.remove("swap"), {once: true});
 }
 
 async function loadResumeSkills() {
@@ -102,34 +136,164 @@ async function loadResumeSkills() {
   }
 }
 
+// The map keeps one element per job so filter and selection changes can move
+// nodes instead of redrawing them.
+const MAP = {label: 34, row: 72, nodeH: 58, nodeW: 232, firstX: 130, nextX: 506, width: 740, minRows: 5};
+const mapNodes = new Map();
+const mapEdges = new Map();
+let edgeFrame = 0;
+
+function tweenNumber(element, to) {
+  const from = parseFloat(element.dataset.value ?? to);
+  element.dataset.value = to;
+  if (from === to || reduceMotion.matches) { element.textContent = to; return; }
+  const decimals = String(to).split(".")[1]?.length || 0;
+  const start = performance.now();
+  const step = (now) => {
+    const t = Math.min(1, (now - start) / 450);
+    const eased = 1 - (1 - t) ** 3;
+    element.textContent = (from + (to - from) * eased).toFixed(decimals);
+    if (t < 1 && element.dataset.value == to) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+function mapNode(map, key, attrs) {
+  let node = mapNodes.get(key);
+  if (!node) {
+    node = document.createElement("button");
+    node.type = "button";
+    node.className = "alumni-node entering";
+    node.innerHTML = "<strong></strong><span><b></b><em></em></span>";
+    node.style.top = attrs.top + "px";
+    map.append(node);
+    mapNodes.set(key, node);
+    requestAnimationFrame(() => requestAnimationFrame(() => node.classList.remove("entering")));
+  }
+  node.style.left = attrs.left + "px";
+  node.style.top = attrs.top + "px";
+  node.querySelector("strong").textContent = attrs.title;
+  tweenNumber(node.querySelector("b"), attrs.value);
+  node.querySelector("em").textContent = attrs.suffix;
+  node.classList.toggle("selected", attrs.selected);
+  node.setAttribute("aria-pressed", attrs.selected);
+  node.setAttribute("aria-label", `${attrs.title}, ${attrs.value}${attrs.suffix}`);
+  for (const [name, value] of Object.entries(attrs.data)) node.dataset[name] = value;
+  return node;
+}
+
+function drawEdges(map, center) {
+  const svg = map.querySelector(".alumni-edges");
+  for (const [key, path] of mapEdges) {
+    const node = mapNodes.get(key);
+    if (!node) continue;
+    const y2 = node.offsetTop + MAP.nodeH / 2, x2 = node.offsetLeft;
+    let x1 = 0, y1 = center;
+    if (key.startsWith("next:")) {
+      const parent = [...mapNodes.values()].find(el => el.dataset.firstJob === selectedFamily);
+      if (!parent) continue;
+      x1 = parent.offsetLeft + MAP.nodeW; y1 = parent.offsetTop + MAP.nodeH / 2;
+    }
+    const mid = (x1 + x2) / 2;
+    path.setAttribute("d", `M${x1} ${y1}C${mid} ${y1} ${mid} ${y2} ${x2} ${y2}`);
+  }
+  svg.setAttribute("viewBox", `0 0 ${MAP.width} ${map.offsetHeight}`);
+}
+
 function renderAlumniMap(data) {
+  const map = document.querySelector("#alumni-map");
+  if (!map.querySelector(".alumni-edges")) {
+    map.innerHTML = `
+      <div class="alumni-column-label" style="left:${MAP.firstX}px">Started here</div>
+      <div class="alumni-column-label" style="left:${MAP.nextX}px">Went next</div>
+      <svg class="alumni-edges" aria-hidden="true"></svg>
+      <p class="alumni-no-next" style="left:${MAP.nextX}px" hidden>No second jobs recorded for this first job.</p>`;
+  }
   const jobs = data.first_jobs.slice(0, 5);
   const chosen = jobs.find(job => job.title === selectedFamily);
   const next = chosen?.next_roles.slice(0, 5) || [];
-  const height = Math.max(390, 65 + Math.max(jobs.length, next.length) * 86);
+  const rows = Math.max(MAP.minRows, jobs.length, next.length);
+  const height = MAP.label * 2 + rows * MAP.row;
   const center = height / 2;
-  const y = index => 85 + index * 86;
-  const paths = jobs.map((job, i) => `<path class="${job.title === selectedFamily ? "active" : ""}" d="M190 ${center} C240 ${center} 260 ${y(i)} 310 ${y(i)}"/>`);
-  if (chosen) {
-    const source = y(jobs.indexOf(chosen));
-    next.forEach((role, i) => paths.push(`<path class="active" d="M540 ${source} C600 ${source} 620 ${y(i)} 680 ${y(i)}"/>`));
+  const columnTop = (count, i) => center - (count * MAP.row) / 2 + i * MAP.row + (MAP.row - MAP.nodeH) / 2;
+  map.style.height = height + "px";
+  map.style.width = MAP.width + "px";
+
+  const wanted = new Set();
+  jobs.forEach((job, i) => {
+    const key = `first:${job.title}`;
+    wanted.add(key);
+    mapNode(map, key, {
+      left: MAP.firstX, top: columnTop(jobs.length, i), title: job.title, value: job.percent,
+      suffix: `% · ${job.count} first jobs`, selected: job.title === selectedFamily && !selectedNextJob,
+      data: {firstJob: job.title},
+    });
+  });
+  next.forEach((role, i) => {
+    const key = `next:${role.title}`;
+    wanted.add(key);
+    mapNode(map, key, {
+      left: MAP.nextX, top: columnTop(next.length, i), title: role.title, value: role.count,
+      suffix: " recorded transitions", selected: role.title === selectedNextJob,
+      data: {nextJob: role.title},
+    });
+  });
+  const noNext = map.querySelector(".alumni-no-next");
+  noNext.hidden = Boolean(next.length);
+  noNext.style.top = center - 20 + "px";
+
+  const svg = map.querySelector(".alumni-edges");
+  for (const key of wanted) {
+    let path = mapEdges.get(key);
+    if (!path) {
+      path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.classList.add("entering");
+      svg.append(path);
+      mapEdges.set(key, path);
+      requestAnimationFrame(() => requestAnimationFrame(() => path.classList.remove("entering")));
+    }
+    path.classList.remove("leaving");
+    path.classList.toggle("active", key.startsWith("next:") || key === `first:${selectedFamily}`);
   }
-  document.querySelector("#alumni-map").style.height = height + "px";
-  document.querySelector("#alumni-map").innerHTML = `
-    <div class="alumni-column-label" style="left:20px">Your degree</div>
-    <div class="alumni-column-label" style="left:310px">Started here</div>
-    <div class="alumni-column-label" style="left:680px">Went next</div>
-    <svg class="alumni-edges" width="940" height="${height}" aria-hidden="true">${paths.join("")}</svg>
-    <div class="alumni-root" style="top:${center - 55}px">${escapeHtml(data.major)}<small>Bachelor of Science</small></div>
-    ${jobs.map((job, i) => `<button class="alumni-node ${job.title === selectedFamily && !selectedNextJob ? "selected" : ""}" style="left:310px;top:${y(i)-32}px" data-first-job="${escapeHtml(job.title)}" aria-pressed="${job.title === selectedFamily && !selectedNextJob}"><strong>${escapeHtml(job.title)}</strong><span>${job.percent}% · ${job.count} first jobs</span></button>`).join("")}
-    ${next.map((role, i) => `<button class="alumni-node ${role.title === selectedNextJob ? "selected" : ""}" style="left:680px;top:${y(i)-32}px" data-next-job="${escapeHtml(role.title)}" aria-pressed="${role.title === selectedNextJob}"><strong>${escapeHtml(role.title)}</strong><span>${role.count} recorded transitions</span></button>`).join("")}
-    ${!next.length ? '<p class="alumni-no-next">No second jobs recorded for this first job.</p>' : ""}`;
+  for (const [key, node] of mapNodes) {
+    if (wanted.has(key)) continue;
+    const path = mapEdges.get(key);
+    mapNodes.delete(key);
+    mapEdges.delete(key);
+    node.classList.add("leaving");
+    path?.classList.add("leaving");
+    const remove = () => { node.remove(); path?.remove(); };
+    if (reduceMotion.matches) remove(); else setTimeout(remove, 260);
+  }
+
+  cancelAnimationFrame(edgeFrame);
+  const until = performance.now() + (reduceMotion.matches ? 0 : 520);
+  const follow = () => {
+    drawEdges(map, center);
+    if (performance.now() < until) edgeFrame = requestAnimationFrame(follow);
+  };
+  follow();
+
+  if (!hasArrived) {
+    hasArrived = true;
+    if (!reduceMotion.matches) {
+      map.classList.add("arriving");
+      setTimeout(() => map.classList.remove("arriving"), 700);
+    }
+  }
+}
+
+function setResultsHidden(hidden) {
+  document.querySelector("#discover-results").hidden = hidden;
+  document.querySelector("#outcomes-panel").hidden = hidden;
+  if (hidden) document.querySelector("#detail-drawer").hidden = true;
 }
 
 function renderDiscover(data) {
   discoverData = data;
   const years = data.graduation_years;
-  document.querySelector("#cohort-title").textContent = `Where ${data.major} graduates went`;
+  const likeYou = ["track", "gpa", "internships"].some(name => document.querySelector(`#filter-${name}`).checked);
+  document.querySelector("#cohort-title").textContent = `Where ${data.major} graduates ${likeYou ? "like you " : ""}went`;
   document.querySelector("#cohort-lead").textContent = years.length
     ? `Bachelor’s graduates, ${years[0]}–${years.at(-1)}. Recorded outcomes from synthetic alumni, not open jobs.`
     : "No bachelor’s graduates match these filters.";
@@ -139,9 +303,9 @@ function renderDiscover(data) {
   if (!data.first_jobs.slice(0, 5).some(job => job.title === selectedFamily)) selectedFamily = data.first_jobs[0]?.title || "";
   const job = data.first_jobs.find(job => job.title === selectedFamily);
   if (!job?.next_roles.slice(0, 5).some(role => role.title === selectedNextJob)) selectedNextJob = "";
+  setResultsHidden(false);
   renderAlumniMap(data);
   renderJobDetail(job, data);
-  document.querySelector("#discover-results").hidden = false;
 }
 
 async function loadDiscover() {
@@ -159,16 +323,16 @@ async function loadDiscover() {
     const data = await api(`/api/discover?${params}`);
     if (version !== requestVersion) return;
     if (!data.cohort_count) {
-      results.hidden = true;
+      setResultsHidden(true);
       status.textContent = "No alumni match these filters. Turn one off to widen the group.";
       return;
     }
     const caution = data.small_sample ? " Small group: a few people can move the percentage." : "";
     status.textContent = `${countLabel(data.cohort_count)} graduates in this group. ${countLabel(data.employed_count)} reported a first job. ${countLabel(data.unknown_count)} outcomes are unknown.${caution}`;
-    renderDiscover(data, false);
+    renderDiscover(data);
   } catch (error) {
     if (version !== requestVersion) return;
-    results.hidden = true;
+    setResultsHidden(true);
     status.textContent = error.message || "Could not load alumni paths.";
     retry.hidden = false;
   } finally {
@@ -186,8 +350,10 @@ document.querySelector("#alumni-map").addEventListener("click", event => {
     selectedNextJob = button.dataset.nextJob;
   } else return;
   renderDiscover(discoverData);
-  document.querySelector('#alumni-map [aria-pressed="true"]')?.focus({preventScroll:true});
 });
+
+document.querySelector("#drawer-toggle").addEventListener("click", () =>
+  document.querySelector("#detail-sheet").scrollIntoView({block: "start", behavior: reduceMotion.matches ? "auto" : "smooth"}));
 
 for (const name of ["track", "gpa", "internships"])
   document.querySelector(`#filter-${name}`).addEventListener("change", loadDiscover);
