@@ -54,7 +54,7 @@ function readIds(key, valid) {
 }
 const storageKey = (key) => `${document.body.dataset.studentId}.${key}`;
 const planned = readIds(
-  "careergraph.activities",
+  "grit.activities",
   activities.map((a) => a.id),
 );
 let currentView = "discover";
@@ -115,7 +115,7 @@ document.addEventListener("click", (event) => {
     const id = button.dataset.plan;
     if (planned.has(id)) planned.delete(id);
     else planned.add(id);
-    persist("careergraph.activities", planned);
+    persist("grit.activities", planned);
     renderActivities();
     $(`[data-plan="${id}"]`).focus({ preventScroll: true });
   }
