@@ -8,6 +8,7 @@
   <header class="site-header"><a class="brand" href="/"><span class="brand-symbol"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 7 8 4M8 17l8-4M6 9v6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="6" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="18" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="6" cy="18" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span>grit</a><span class="school-logo"><img src="{{ url_for('static', filename='images/umbc.png') }}" alt="University of Maryland, Baltimore County" height="48"></span><span class="demo-label">Synthetic student demo</span></header>
   <div class="hero-body">
     <div class="hero-copy">
+      <p class="entry-kicker"><span></span> SMALL STEPS. BIG POSSIBILITIES.</p>
       <h1 id="hero-title"><span class="hero-line"><span>A starting point.</span></span><span class="hero-line"><span>A world of</span></span><span class="hero-line"><span>possibilities.</span></span></h1>
       <p class="hero-sub">See where alumni with your major went first, where they went next, and which of their skills you already have.</p>
     </div>
@@ -40,12 +41,21 @@
 <main id="main" class="demo" tabindex="-1" aria-labelledby="welcome-title">
   <div class="demo-grid">
     <div class="demo-intro">
+      <p class="entry-kicker"><span></span> YOUR NEXT CHAPTER</p>
       <h2 id="welcome-title">Start with your student ID.</h2>
       <p class="demo-lede">Look up a student from the demo’s current student dataset. grit builds their profile, then lines it up against alumni who studied the same thing.</p>
-      <ul class="benefit-list"><li><strong>Your studies</strong><span>Major, GPA, courses, and graduation plans.</span></li><li><strong>Your experience</strong><span>Internships, activities, and certifications.</span></li><li><strong>Alumni paths</strong><span>First roles, next jobs, and the skills behind them.</span></li></ul>
+      <ol class="entry-journey">
+        <li><span class="entry-step" aria-hidden="true">01</span><div><strong>Discover your possibilities</strong><p>Follow the paths alumni took from your major to their first roles.</p></div></li>
+        <li><span class="entry-step" aria-hidden="true">02</span><div><strong>Put your experience into words</strong><p>Bring your resume and explore how to tell your story.</p></div></li>
+        <li><span class="entry-step" aria-hidden="true">03</span><div><strong>Start a conversation</strong><p>Find alumni with a shared background and draft an introduction.</p></div></li>
+      </ol>
       <p class="field-hint">This demo uses fictional records, not a live university system. A student ID looks up a profile; it does not verify identity.</p>
     </div>
     <section class="onboarding-card" aria-label="Student lookup">
+      <div class="entry-card-heading">
+        <span class="entry-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M6 16c0-4 6-4 6 0m3-6h3m-3 4h3"/></svg></span>
+        <div><h3>A little about you.</h3><p>Your student ID is the starting point.</p></div>
+      </div>
       <form id="entry-form">
         <label for="school">School</label>
         <select id="school" name="school" required>

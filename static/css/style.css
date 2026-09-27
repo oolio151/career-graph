@@ -1508,6 +1508,8 @@ th { background: #f4eee5; position: sticky; top: 0; }
 }
 #school { display:block; width:100%; padding:14px 12px; margin-bottom:24px; border:2px solid var(--accent-border); border-radius:12px; background:var(--accent-soft); color:var(--ink); }
 .school-entry .brand { color:var(--accent); }
+.school-entry .brand-symbol { background:var(--accent-soft); color:var(--accent); }
+.school-entry[data-school="umbc"] .brand-symbol { background:var(--yellow); }
 .school-entry #enter-app { background:var(--accent); color:var(--accent-foreground); border-color:var(--accent); box-shadow:0 4px 0 var(--accent-shadow); }
 .school-entry #enter-app:hover { background:var(--accent-dark); }
 @media (prefers-reduced-motion: reduce) {
@@ -1551,6 +1553,8 @@ body:has(#view-discover), body:has(#view-resume) {
 .alumni-node:hover { background:#fffdf4; border-color:#b49a4c; box-shadow:0 4px 12px #20201e10; }
 .alumni-node.selected { background:#fff4c2; border:2px solid #c7a028; box-shadow:0 3px 10px #98731214; }
 .alumni-node.selected span { color:#6b571e; }
+.alumni-node.branch-parent { background:#fff9e4; border-color:#dfcd94; box-shadow:0 2px 8px #9873120a; }
+.alumni-node.branch-parent span { color:#786b43; }
 .graph-footer { border-top:1px solid var(--line); background:#fafaf7; padding:14px 22px; }
 .alumni-job-detail { padding:28px; gap:30px; border-top:3px solid #e5bd35; }
 .alumni-job-detail > div + div { padding-left:26px; border-left:1px solid var(--line); }
@@ -1786,8 +1790,17 @@ body:has(#view-discover:not([hidden])) .site-header { margin-bottom:0; }
 .connect-positions { display:flex; flex-wrap:wrap; gap:10px; max-height:220px; overflow-y:auto; margin:18px 0; }
 .connect-positions label { display:flex; gap:8px; align-items:center; background:#f4eee5; padding:9px 12px; border-radius:10px; font-size:14px; }
 .connect-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:24px; margin-top:24px; }
-.connect-card { min-width:0; }
-.connect-card table { margin:18px 0; }
+.connect-card {
+  min-width:0;
+  display:grid;
+  grid-row:span 9;
+  grid-template-rows:subgrid;
+  row-gap:0;
+}
+.connect-card > * { min-width:0; }
+.connect-card table { margin:18px 0; align-self:start; width:100%; table-layout:fixed; }
+.connect-card th, .connect-card td { overflow-wrap:anywhere; }
+.connect-card > .secondary-button { align-self:start; justify-self:start; }
 .connect-contact { overflow-wrap:anywhere; margin:18px 0; font-weight:600; }
 .connect-draft { width:100%; height:300px; overflow-y:auto; resize:vertical; margin:16px 0; padding:16px; border:2px solid var(--line); border-radius:12px; font-family:inherit; font-size:14px; line-height:1.7; }
 #connect-email { margin:auto; padding:0; width:min(760px,calc(100vw - 40px)); max-width:760px; max-height:90vh; overflow-y:auto; background:#fff; box-shadow:0 24px 90px #0003; }
@@ -1805,3 +1818,55 @@ body:has(#view-discover:not([hidden])) .site-header { margin-bottom:0; }
 .email-footer { padding:16px 30px 24px; border-top:1px solid var(--line); }
 #connect-email-status { font-size:13px; margin:0 0 12px; }
 #connect-email .email-note { font-size:12px; color:var(--muted); margin:14px 0 0; }
+
+/* Welcome accents follow the selected school. */
+.school-entry {
+  --entry-glow:#387e7d1c; --entry-glow-soft:#387e7d10;
+  --entry-paper:#f3f7f4; --entry-ink:#37635b; --entry-highlight:#589888;
+  --entry-border:#cbded5; --entry-soft:#eaf4ee; --entry-shadow:#244b3e0b; --entry-dot:#7b9e8e;
+}
+.school-entry[data-school="umbc"] {
+  --entry-glow:#ffcc001c; --entry-glow-soft:#ffcc0010;
+  --entry-paper:#f8f7f2; --entry-ink:#746335; --entry-highlight:#e2b514;
+  --entry-border:#dfd5b6; --entry-soft:#fff9e6; --entry-shadow:#5145140b; --entry-dot:#ac956c;
+}
+/* Quiet structure around the student lookup. */
+.school-entry .hero {
+  background: radial-gradient(ellipse at 95% 30%, var(--entry-glow), transparent 55%),
+              radial-gradient(ellipse at 0% 85%, var(--entry-glow-soft), transparent 50%), var(--entry-paper);
+}
+.school-entry .entry-kicker { display:flex; align-items:center; gap:10px; margin-bottom:22px; font-size:11px; font-weight:600; letter-spacing:.16em; color:var(--entry-ink); }
+.entry-kicker > span { width:8px; height:8px; border-radius:50%; background:var(--entry-highlight); box-shadow:0 0 0 5px var(--entry-glow); flex-shrink:0; }
+.school-entry .hero-graph { padding:28px 22px; border:1px solid var(--entry-border); border-radius:24px; background:linear-gradient(135deg, #ffffffc9, var(--entry-soft)); box-shadow:0 22px 64px var(--entry-shadow); }
+.school-entry main.demo {
+  position:relative; isolation:isolate;
+  background:radial-gradient(ellipse at 8% 25%, var(--entry-glow), transparent 50%),
+             radial-gradient(ellipse at 95% 90%, var(--entry-glow), transparent 55%), var(--entry-paper);
+  border-top-color:var(--entry-border);
+}
+.school-entry main.demo::before { content:""; position:absolute; inset:0; z-index:-1; pointer-events:none; opacity:.3; background-image:radial-gradient(var(--entry-dot) 0.65px, transparent 0.65px); background-size:24px 24px; mask-image:linear-gradient(to right, #000, transparent 65%); }
+.entry-journey { padding:0; margin:30px 0; list-style:none; display:grid; gap:0; }
+.entry-journey li { display:flex; gap:16px; position:relative; padding:0 0 24px; }
+.entry-journey li:last-child { padding-bottom:0; }
+.entry-journey li:not(:last-child)::before { content:""; position:absolute; top:39px; bottom:0; left:19px; width:1px; background:var(--entry-border); }
+.entry-step { display:grid; place-items:center; width:40px; height:40px; flex-shrink:0; border-radius:12px; background:var(--entry-soft); border:1px solid var(--entry-border); color:var(--entry-ink); font-size:12px; font-weight:600; }
+.entry-journey strong { font-size:15px; font-weight:600; }
+.entry-journey p { color:#68675f; font-size:14px; line-height:1.6; margin-top:5px; max-width:37ch; }
+.school-entry .demo .onboarding-card { position:relative; background:#ffffffed; border:1px solid var(--entry-border); box-shadow:0 24px 65px var(--entry-shadow), 0 3px 10px var(--entry-shadow); overflow:hidden; }
+.school-entry .demo .onboarding-card::before { content:""; position:absolute; top:0; left:0; right:0; height:4px; background:linear-gradient(90deg, var(--accent) 0 18%, var(--entry-highlight) 18% 65%, var(--entry-border) 100%); }
+.entry-card-heading { display:flex; gap:14px; align-items:center; padding-bottom:22px; border-bottom:1px solid var(--entry-border); }
+.entry-card-heading h3 { font-size:21px; letter-spacing:-.025em; font-weight:600; }
+.entry-card-heading p { margin-top:4px; color:#68675f; font-size:13px; }
+.entry-card-icon { display:grid; place-items:center; width:48px; height:48px; border-radius:14px; background:var(--entry-soft); color:var(--entry-ink); flex-shrink:0; }
+.entry-card-icon svg { width:28px; height:28px; }
+.school-entry .demo #campus-id { background:var(--entry-paper); }
+@media (max-width:640px) {
+  .school-entry .hero-graph { padding:20px 14px; }
+  .school-entry .entry-kicker { font-size:10px; letter-spacing:.1em; }
+}
+
+/* Keep the column headings, nodes, and caption on the same center lines. */
+.school-entry .graph-col { align-items:center; min-width:0; }
+.school-entry .graph-col[data-label]::before { left:0; right:0; text-align:center; }
+.school-entry .graph-node { max-width:100%; white-space:normal; text-align:center; overflow-wrap:normal; }
+.school-entry .hero-graph figcaption { text-align:center; margin-inline:auto; max-width:44ch; text-wrap:balance; }
