@@ -2,7 +2,7 @@
 {% block theme_color %}#387e7d{% endblock %}
 {% block body_attributes %}class="school-entry" data-school=""{% endblock %}
 {% block scripts %}<script>if (!matchMedia("(prefers-reduced-motion: reduce)").matches) { document.documentElement.classList.add("intro"); setTimeout(() => document.documentElement.classList.add("intro-play"), 2500); }</script>
-<script src="{{ url_for('static', filename='js/welcome.js', v=9) }}" defer></script>{% endblock %}
+<script src="{{ url_for('static', filename='js/welcome.js', v=10) }}" defer></script>{% endblock %}
 {% block content %}
 <section class="hero" aria-labelledby="hero-title">
   <header class="site-header"><a class="brand" href="/"><span class="brand-symbol"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 7 8 4M8 17l8-4M6 9v6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="6" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="18" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="6" cy="18" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span>grit</a><span class="school-logo"><img src="{{ url_for('static', filename='images/umbc.png') }}" alt="University of Maryland, Baltimore County" height="48"></span><span class="demo-label">Synthetic student demo</span></header>
@@ -10,7 +10,7 @@
     <div class="hero-copy">
       <p class="entry-kicker"><span></span> SMALL STEPS. BIG POSSIBILITIES.</p>
       <h1 id="hero-title"><span class="hero-line"><span>A starting point.</span></span><span class="hero-line"><span>A world of</span></span><span class="hero-line"><span>possibilities.</span></span></h1>
-      <p class="hero-sub">See where alumni with your major went first, where they went next, and which of their skills you already have.</p>
+      <p class="hero-sub">Providing equal opportunity for all and combating nepotism in the job market.</p>
     </div>
     <figure class="hero-graph" aria-hidden="true">
       <div class="career-graph" id="career-graph">

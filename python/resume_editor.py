@@ -5,6 +5,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+from threading import Lock
 from difflib import SequenceMatcher
 from io import BytesIO
 from xml.sax.saxutils import escape
@@ -26,6 +27,26 @@ from gemini import GeminiError
 _fonts = Path(reportlab.__file__).parent / 'fonts'
 pdfmetrics.registerFont(TTFont('Resume', str(_fonts / 'Vera.ttf')))
 pdfmetrics.registerFont(TTFont('ResumeBold', str(_fonts / 'VeraBd.ttf')))
+
+_PROJECT = Path(__file__).resolve().parent.parent
+_LATEX_BUNDLE = _PROJECT / 'vendor/latex'
+_cache_lock = Lock()
+
+
+def _latex_cache():
+    if os.environ.get('VERCEL') != '1':
+        return _PROJECT / 'instance/cache'
+    # Deployment files are read-only. Seed a writable cache once per instance.
+    cache = Path(tempfile.gettempdir()) / 'grit-latex-cache-v1'
+    with _cache_lock:
+        marker = cache / '.ready'
+        if not marker.exists():
+            cache.mkdir(parents=True, exist_ok=True)
+            seed = _LATEX_BUNDLE / 'cache'
+            if seed.is_dir():
+                shutil.copytree(seed, cache, dirs_exist_ok=True)
+            marker.touch()
+    return cache
 
 
 def extract_latex(data):
@@ -52,8 +73,10 @@ def apply_latex_lines(lines):
 def compile_latex(data):
     """Compile a LaTeX source buffer into a PDF in an isolated temp directory."""
     source = extract_latex(data)
-    local = Path(__file__).resolve().parent.parent / 'instance/bin/tectonic'
+    local = _PROJECT / 'instance/bin/tectonic'
+    bundled = _LATEX_BUNDLE / 'tectonic'
     compiler = (os.environ.get('LATEX_COMPILER', '').strip() or
+                (str(bundled) if bundled.is_file() else None) or
                 (str(local) if local.is_file() else None) or shutil.which('tectonic') or shutil.which('pdflatex'))
     if not compiler:
         raise RuntimeError('LaTeX preview is unavailable because no tectonic or pdflatex compiler is installed.')
@@ -68,7 +91,7 @@ def compile_latex(data):
                        '-output-directory', str(root), str(tex)]
         try:
             env = {**os.environ, 'openin_any': 'p', 'openout_any': 'p',
-                   'XDG_CACHE_HOME': str(local.parent.parent / 'cache')}
+                   'XDG_CACHE_HOME': str(_latex_cache())}
             result = subprocess.run(command, cwd=root, env=env, capture_output=True, timeout=90, check=False)
         except (OSError, subprocess.TimeoutExpired):
             raise RuntimeError('LaTeX preview timed out or could not start.') from None

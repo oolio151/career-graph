@@ -1512,6 +1512,26 @@ th { background: #f4eee5; position: sticky; top: 0; }
   transition: color 1.2s ease, background-color 1.2s ease, border-color 1.2s ease, box-shadow 1.2s ease, fill 1.2s ease, stroke 1.2s ease;
 }
 #school { display:block; width:100%; padding:14px 12px; margin-bottom:24px; border:2px solid var(--accent-border); border-radius:12px; background:var(--accent-soft); color:var(--ink); }
+/* Reveal school colors together, including gradients, text, and the brand. */
+html.school-theme-splash .school-entry,
+html.school-theme-splash .school-entry *,
+html.school-theme-splash .school-entry *::before,
+html.school-theme-splash .school-entry *::after { transition:none !important; }
+html.school-theme-splash::view-transition-group(root) { animation:none; }
+html.school-theme-splash::view-transition-old(root),
+html.school-theme-splash::view-transition-new(root) { mix-blend-mode:normal; }
+html.school-theme-splash::view-transition-old(root) { animation:none; z-index:1; }
+html.school-theme-splash::view-transition-new(root) {
+  z-index:2;
+  animation:school-color-splash 1100ms cubic-bezier(.22,.61,.36,1) both;
+}
+@keyframes school-color-splash {
+  from { clip-path:circle(0px at 50% 50%); }
+  to { clip-path:circle(var(--school-splash-radius, 150vmax) at 50% 50%); }
+}
+@media (prefers-reduced-motion:reduce) {
+  html.school-theme-splash::view-transition-new(root) { animation:none; }
+}
 .school-entry .brand { color:var(--accent); }
 .school-entry .brand-symbol { background:var(--accent-soft); color:var(--accent); }
 .school-entry[data-school="umbc"] .brand-symbol { background:var(--yellow); }

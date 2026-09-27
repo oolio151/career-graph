@@ -64,13 +64,26 @@ the Resume Studio dropdown. Gemini receives that selection as context on each co
 
 **LaTeX preview.** Previews use real compilation; compilation failures are shown in the
 conversation and never replaced with an approximate document. The compiler is resolved from
-`LATEX_COMPILER`, `instance/bin/tectonic`, or an installed `tectonic`/`pdflatex` on PATH.
+`LATEX_COMPILER`, `vendor/latex/tectonic`, `instance/bin/tectonic`, or an installed `tectonic`/`pdflatex` on PATH.
 This local workspace has the official portable Tectonic binary in `instance/bin/tectonic`;
 that ignored binary must also be installed when deploying or cloning elsewhere. Tectonic
 runs with `--untrusted`, and its packages are cached in `instance/cache` (the first compile
 requires network access). Compilations have a 90-second timeout. Single-file resumes must
 use installed packages; external custom class files and images are not uploaded with `.tex`.
 Original and updated PDFs are compared side by side without modifying their typography.
+
+**Vercel deployment.** The checked-in `vercel.json` runs `python scripts/build_latex.py`
+to download the official Linux x86_64 Tectonic 0.17.0 binary and compile a sample resume,
+preloading common packages. Generated files in `vendor/latex` are bundled in the function,
+not committed to Git. Builds need access to GitHub and Tectonic's package server and fail
+if the sample cannot compile. Runtime caches are copied to writable `/tmp`; uncommon
+packages may still need a download on first use. The function allows 120 seconds (enable
+Fluid compute if your project's older duration settings do not allow this).
+Redeploy the updated repository with the Flask framework preset and repository root directory.
+Remove any `LATEX_COMPILER` environment override pointing to a local machine path.
+Look for `LaTeX deployment bundle ready` in build logs. No external rendering service or
+additional API key is needed. Custom class files, images, and system fonts still need to
+be supplied separately; a standalone `.tex` upload cannot include those dependencies.
 
 Gemini edit requests use JSON output, include the source once, and allow 90 seconds on the
 server and 100 seconds in the browser. Recent conversation and profile context are retained.

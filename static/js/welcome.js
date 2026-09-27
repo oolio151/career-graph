@@ -9,12 +9,44 @@ const resumeLabel = document.querySelector(".upload-label");
 const resumeHint = document.querySelector("#resume-hint");
 const csrf = document.querySelector('meta[name="csrf-token"]').content;
 const schoolInput = document.querySelector("#school");
-function applySchoolTheme() {
-  document.body.dataset.school = schoolInput.value;
-  document.querySelector('meta[name="theme-color"]').content = schoolInput.value === "umbc" ? "#171717" : "#387e7d";
+let schoolThemeTransition = null;
+const schoolReducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+function applySchoolTheme(animate = false) {
+  const school = schoolInput.value;
+  if (document.body.dataset.school === school) return;
+  const update = () => {
+    document.body.dataset.school = school;
+    document.querySelector('meta[name="theme-color"]').content = school === "umbc" ? "#171717" : "#387e7d";
+  };
+  schoolThemeTransition?.skipTransition();
+  if (!animate || schoolReducedMotion.matches || !document.startViewTransition) {
+    update();
+    return;
+  }
+  const root = document.documentElement;
+  // Reveal the entire new page snapshot so text, SVGs, and gradients share one wave.
+  root.style.setProperty('--school-splash-radius', `${Math.ceil(Math.hypot(innerWidth, innerHeight) / 2) + 2}px`);
+  root.classList.add('school-theme-splash');
+  try {
+    const transition = document.startViewTransition(update);
+    schoolThemeTransition = transition;
+    transition.finished.catch(() => {}).finally(() => {
+      if (schoolThemeTransition !== transition) return;
+      schoolThemeTransition = null;
+      root.classList.remove('school-theme-splash');
+      root.style.removeProperty('--school-splash-radius');
+    });
+  } catch {
+    root.classList.remove('school-theme-splash');
+    root.style.removeProperty('--school-splash-radius');
+    update();
+  }
 }
-schoolInput.addEventListener("change", applySchoolTheme);
-window.addEventListener("pageshow", applySchoolTheme);
+schoolInput.addEventListener('change', () => applySchoolTheme(true));
+window.addEventListener('pageshow', () => applySchoolTheme());
+schoolReducedMotion.addEventListener('change', () => {
+  if (schoolReducedMotion.matches) schoolThemeTransition?.skipTransition();
+});
 let lookup = 0;
 function showError(message) { error.textContent = message; error.hidden = !message; }
 async function findStudent() {

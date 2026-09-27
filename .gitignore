@@ -6,6 +6,7 @@ __pycache__/
 .env.*
 !.env.example
 instance/
+vendor/latex/
 .pytest_cache/
 .coverage
 htmlcov/

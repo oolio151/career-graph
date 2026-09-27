@@ -8,11 +8,28 @@ from unittest.mock import Mock, patch
 
 from app import create_app
 from gemini import Gemini, GeminiError
+from python import resume_editor
 from python.resume_editor import (extract_pdf, extract_latex, apply_latex_lines, compile_latex,
                                    make_pdf, propose_edits)
 
 
 class EditorTests(unittest.TestCase):
+    def test_vercel_cache_is_writable_copy_and_preserves_downloads(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            bundle = root / 'bundle'
+            (bundle / 'cache').mkdir(parents=True)
+            (bundle / 'cache/package').write_text('seed')
+            with patch.dict(os.environ, {'VERCEL': '1'}), \
+                    patch.object(resume_editor, '_LATEX_BUNDLE', bundle), \
+                    patch('python.resume_editor.tempfile.gettempdir', return_value=temp):
+                cache = resume_editor._latex_cache()
+                self.assertNotEqual(cache, bundle / 'cache')
+                self.assertEqual((cache / 'package').read_text(), 'seed')
+                (cache / 'package').write_text('runtime update')
+                self.assertEqual((resume_editor._latex_cache() / 'package').read_text(), 'runtime update')
+                self.assertEqual((bundle / 'cache/package').read_text(), 'seed')
+
     def test_edit_request_uses_json_and_longer_timeout(self):
         response = Mock()
         response.__enter__ = Mock(return_value=response)

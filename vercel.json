@@ -1,0 +1,12 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "flask",
+  "buildCommand": "python scripts/build_latex.py",
+  "functions": {
+    "app.py": {
+      "maxDuration": 120,
+      "includeFiles": "vendor/latex/**",
+      "excludeFiles": "{instance/**,tests/**,.venv/**}"
+    }
+  }
+}
