@@ -82,25 +82,6 @@ its two dependencies. Set `GEMINI_MODEL` to override the default `gemini-2.5-fla
 No Node.js or frontend build step is needed. Flask reloads Python changes in
 debug mode; refresh the browser after editing HTML, CSS, or JavaScript.
 
-## Tests
-
-```bash
-python -m unittest discover -s tests
-```
-
-The suite covers upload validation, CSRF, session isolation, the alumni percentage
-denominators against the real CSVs, the resume text extraction, and the Gemini client. The
-Gemini tests never touch the network: a patched `urlopen` fails the test if a real request is
-attempted.
-
-## Quick backend check
-
-With the environment activated:
-
-```bash
-python -c "from app import create_app; c = create_app().test_client(); assert c.get('/').status_code == 200; assert c.get('/api/health').json['status'] == 'ok'; print('Flask checks passed')"
-```
-
 ## Frontend demo
 
 - **Discover:** Where alumni in your major went, filtered by track, GPA, and internship count. Calculated from the CSVs.
