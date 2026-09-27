@@ -50,7 +50,7 @@ skipResume.addEventListener("change", () => {
   resumeInput.value = skipResume.checked ? "" : resumeInput.value;
   resumeHint.textContent = skipResume.checked
     ? "You can upload a resume later from Resume Studio."
-    : "PDF, DOCX, or TXT · Up to 5 MB. Stored on this computer. The resume page can read it here. It is not sent to an outside model.";
+    : "PDF, DOCX, or TXT, up to 5 MB. Stored on this computer. The resume page can read it here. It is not sent to an outside model.";
 });
 document.querySelectorAll("[data-sample]").forEach(button => button.addEventListener("click", () => { idInput.value = button.dataset.sample; findStudent(); }));
 form.addEventListener("submit", async (event) => {
@@ -64,4 +64,38 @@ form.addEventListener("submit", async (event) => {
     if (!response.ok) throw new Error(data.error);
     location.assign(data.next);
   } catch (e) { showError(e.message || "Upload failed. Please try again."); button.disabled = false; button.textContent = "Discover my possibilities"; }
+});
+
+const graph = document.querySelector("#career-graph");
+const edgeLayer = graph.querySelector(".career-edges");
+const svgNS = "http://www.w3.org/2000/svg";
+const edges = [...graph.querySelectorAll("[data-from]")].map(node => {
+  const path = document.createElementNS(svgNS, "path");
+  path.setAttribute("pathLength", "1");
+  path.classList.add("career-edge");
+  path.classList.toggle("on-path", node.classList.contains("on-path"));
+  path.style.setProperty("--d", `${parseFloat(node.style.getPropertyValue("--d")) - .45}s`);
+  edgeLayer.append(path);
+  return {path, node, parent: graph.querySelector(`[data-node="${node.dataset.from}"]`)};
+});
+function drawEdges() {
+  const box = graph.getBoundingClientRect();
+  edgeLayer.setAttribute("viewBox", `0 0 ${box.width} ${box.height}`);
+  for (const {path, node, parent} of edges) {
+    if (!node.offsetParent) { path.removeAttribute("d"); continue; }
+    const a = parent.getBoundingClientRect(), b = node.getBoundingClientRect();
+    const x1 = a.right - box.left, y1 = a.top + a.height / 2 - box.top;
+    const x2 = b.left - box.left, y2 = b.top + b.height / 2 - box.top;
+    const mid = (x1 + x2) / 2;
+    path.setAttribute("d", `M${x1} ${y1}C${mid} ${y1} ${mid} ${y2} ${x2} ${y2}`);
+  }
+}
+new ResizeObserver(drawEdges).observe(graph);
+document.fonts.ready.then(() => { drawEdges(); requestAnimationFrame(() => document.documentElement.classList.add("intro-play")); });
+document.querySelector("#continue").addEventListener("click", (event) => {
+  event.preventDefault();
+  const demo = document.querySelector("#main");
+  const smooth = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+  demo.scrollIntoView({behavior: smooth ? "smooth" : "auto"});
+  demo.focus({preventScroll: true});
 });
