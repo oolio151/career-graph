@@ -1412,13 +1412,14 @@ th { background: #f4eee5; position: sticky; top: 0; }
 .resume-upload-prompt h3 { margin: 0 0 8px; }
 .resume-upload-prompt label { display: block; font-size: 14px; font-weight: 600; margin: 18px 0 8px; }
 .resume-upload-prompt button { margin-top: 14px; }
-.resume-chat { display: flex; flex-direction: column; min-height: 0; background: white; border: 2px solid var(--line); border-radius: 22px; overflow: hidden; }
+.resume-chat { display: flex; flex-direction: column; height: min(760px, calc(100dvh - 150px)); min-height: 520px; max-height: calc(100dvh - 150px); min-width: 0; background: white; border: 2px solid var(--line); border-radius: 22px; overflow: hidden; }
 .resume-chat-head { padding: 22px 20px 8px; }
 .resume-chat h1 { font-size: 26px; letter-spacing: -.6px; line-height: 1.2; }
 .resume-chat-head p { margin-top: 8px; color: var(--muted); font-size: 14px; }
-#resume-messages { flex: 1; overflow: auto; min-height: 240px; padding: 8px 16px 16px; display: flex; flex-direction: column; gap: 12px; }
+#resume-messages { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; min-width: 0; min-height: 120px; padding: 8px 16px 16px; display: flex; flex-direction: column; gap: 12px; scrollbar-gutter: stable; }
+#resume-messages .message { max-width: 100%; overflow-wrap: anywhere; word-break: break-word; }
 #resume-messages .message p { margin: 0; }
-.resume-prompts { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 16px 8px; }
+.resume-prompts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 0 16px 8px; }
 .resume-prompts button { border: 0; background: #f3eee6; border-radius: 999px; min-height: 36px; padding: 8px 12px; font-size: 13px; font-weight: 600; }
 #resume-chat-form { display: flex; gap: 8px; margin: 0 16px; padding: 6px; border: 2px solid var(--line); border-radius: 14px; }
 #resume-chat-input { flex: 1; min-width: 0; border: 0; background: transparent; padding: 8px; font-size: 16px; color: var(--ink); }
@@ -1435,7 +1436,8 @@ th { background: #f4eee5; position: sticky; top: 0; }
 .resume-sheet p { font-size: 15px; line-height: 1.55; margin: 0 0 12px; }
 .resume-sheet:focus { outline: 3px solid var(--purple); outline-offset: 4px; }
 .methodology p { max-width: 85ch; font-size: 14px; color: var(--muted); margin: 12px 0; }
-@media (max-width: 950px) { .site-header { flex-wrap: wrap; } .site-header nav { order: 2; width: 100%; justify-content: space-between; margin: 0; } .site-header > .icon-button { margin-left: auto; } .discover-layout { grid-template-columns: 1fr; } .discover-detail { position: static; } .resume-editor { grid-template-columns: 1fr; min-height: 0; } .resume-chat { min-height: 460px; } .resume-sheet { padding: 28px 22px 40px; } }
+@media (max-width: 950px) { .site-header { flex-wrap: wrap; } .site-header nav { order: 2; width: 100%; justify-content: space-between; margin: 0; } .site-header > .icon-button { margin-left: auto; } .discover-layout { grid-template-columns: 1fr; } .discover-detail { position: static; } .resume-editor { grid-template-columns: 1fr; min-height: 0; } .resume-chat { height: min(680px, calc(100dvh - 170px)); min-height: 500px; max-height: calc(100dvh - 170px); } .resume-sheet { padding: 28px 22px 40px; } }
+@media (max-width: 480px) { .resume-prompts { grid-template-columns: 1fr; } .resume-chat { min-height: 480px; } }
 @media (max-width: 760px) { .site-header nav { flex-wrap: wrap; justify-content: flex-start; } .nav-item { flex: 0 1 auto; padding: 9px 12px; } .profile-facts { grid-template-columns: repeat(2, 1fr); padding: 16px; gap: 18px; } .onboarding-card { padding: 22px; } .id-row { flex-direction: column; } .compact-list small { display: block; } .share-figure strong { font-size: 34px; } .field-row { padding: 14px 16px 16px; } }
 
 /* Discover: observed job map with a detail panel underneath. */

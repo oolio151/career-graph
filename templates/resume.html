@@ -7,15 +7,17 @@
       </div>
       <div id="resume-messages" role="log" aria-live="polite" aria-relevant="additions"></div>
       <div class="resume-prompts">
-        <button type="button" data-resume-prompt="What should I add?">What should I add?</button>
-        <button type="button" data-resume-prompt="How does this compare with alumni jobs?">Compare with alumni jobs</button>
+        <button type="button" data-resume-prompt="What should my resume emphasize?">What should my resume emphasize?</button>
+        <button type="button" data-resume-prompt="Which roles does my resume fit?">Which roles does my resume fit?</button>
+        <button type="button" data-resume-prompt="What experience should I gain?">What experience should I gain?</button>
+        <button type="button" data-resume-prompt="How did similar alumni start?">How did similar alumni start?</button>
       </div>
       <form id="resume-chat-form">
         <label class="sr-only" for="resume-chat-input">Message the resume chat</label>
         <input id="resume-chat-input" maxlength="500" placeholder="Ask about a section" autocomplete="off" required>
         <button class="primary-button" type="submit" aria-label="Send message">Send</button>
       </form>
-      <p class="resume-chat-note">Synthetic alumni records. Not an outside model, and not a promise about hiring.</p>
+      <p class="resume-chat-note">Synthetic alumni records. When AI is enabled, resume text and selected evidence are sent to Gemini. Not a promise about hiring.</p>
     </section>
     <section class="resume-stage" aria-label="Your resume">
       <div class="resume-stage-bar">
