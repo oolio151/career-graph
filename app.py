@@ -21,8 +21,6 @@ from python.discover_map import discover_map
 from python.connect import matches, draft_email
 from python.chat_history import read_history, write_history
 from python.resume_editor import (extract_pdf, extract_latex, apply_latex_lines, compile_latex,
-                                  latex_preview_lines,
-                                  make_latex_preview,
                                   validate_lines, propose_edits, make_pdf, preserve_pdf)
 from gemini import GeminiError
 
@@ -516,13 +514,7 @@ def create_app(test_config=None):
                 try:
                     document = compile_latex(source)
                 except RuntimeError as error:
-                    # Keep the visual workflow usable when a native TeX toolchain is absent.
-                    document = make_latex_preview(lines, changed)
-                    response = send_file(document, mimetype='application/pdf',
-                                         download_name='resume-preview.pdf', as_attachment=False)
-                    response.headers['X-LaTeX-Preview'] = 'approximate'
-                    response.headers['X-LaTeX-Preview-Note'] = str(error)[:240]
-                    return response
+                    return jsonify(error=str(error)), 422
                 return send_file(document, mimetype='application/pdf',
                                  download_name='resume-draft.pdf', as_attachment=False)
             if original:

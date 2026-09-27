@@ -7,12 +7,50 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 from app import create_app
-from gemini import GeminiError
+from gemini import Gemini, GeminiError
 from python.resume_editor import (extract_pdf, extract_latex, apply_latex_lines, compile_latex,
-                                   latex_preview_lines, make_latex_preview, make_pdf, propose_edits)
+                                   make_pdf, propose_edits)
 
 
 class EditorTests(unittest.TestCase):
+    def test_edit_request_uses_json_and_longer_timeout(self):
+        response = Mock()
+        response.__enter__ = Mock(return_value=response)
+        response.__exit__ = Mock(return_value=False)
+        response.read.return_value = json.dumps({'candidates': [{'content': {'parts': [
+            {'thought': True, 'text': 'internal'}, {'text': '{"reply":"Hello","edits":[]}'}]}}]}).encode()
+        with patch('gemini.urllib.request.urlopen', return_value=response) as request:
+            reply = Gemini('test').generate('resume', json_mode=True)
+        config = json.loads(request.call_args.args[0].data)['generationConfig']
+        self.assertEqual(config['responseMimeType'], 'application/json')
+        self.assertEqual(request.call_args.kwargs['timeout'], 90)
+        self.assertEqual(json.loads(reply)['edits'], [])
+
+    def test_compile_failure_is_not_an_approximate_pdf(self):
+        source = b'\\documentclass{article}\n\\begin{document}\nResume\n\\end{document}\n'
+        with tempfile.TemporaryDirectory() as temp:
+            app = create_app({'TESTING': True, 'SECRET_KEY': 'test', 'UPLOAD_DIR': Path(temp)})
+            client = app.test_client()
+            client.get('/')
+            with client.session_transaction() as session:
+                headers = {'X-CSRF-Token': session['csrf']}
+            client.post('/api/enroll', data={'campus_id': 'CID-116490',
+                'resume': (io.BytesIO(source), 'resume.tex')}, headers=headers)
+            with patch('app.compile_latex', side_effect=RuntimeError('Missing package example.sty')):
+                response = client.post('/api/resume/render', json={'lines': source.decode().splitlines()}, headers=headers)
+            self.assertEqual(response.status_code, 422)
+            self.assertIn('example.sty', response.json['error'])
+
+    @unittest.skipUnless(Path('instance/bin/tectonic').exists(), 'Local compiler not installed')
+    def test_real_compiler_preserves_color(self):
+        from pypdf import PdfReader
+        source = (br'\documentclass{article}\usepackage{xcolor}'
+                  br'\definecolor{headercolor}{RGB}{173,100,82}'
+                  br'\begin{document}\textcolor{headercolor}{Resume}\end{document}')
+        pdf = PdfReader(compile_latex(source))
+        self.assertIn('Resume', pdf.pages[0].extract_text())
+        self.assertIn(b'0.678 0.392 0.322 rg', pdf.pages[0].get_contents().get_data())
+
     def test_latex_source_roundtrip(self):
         source = b"\\documentclass{article}\n\\begin{document}\nBuilt a thing.\n\\end{document}\n"
         self.assertEqual(extract_latex(source).splitlines()[2], 'Built a thing.')
@@ -26,19 +64,6 @@ class EditorTests(unittest.TestCase):
         with patch.dict(os.environ, {'LATEX_COMPILER': '/definitely/missing/latex'}):
             with self.assertRaises(RuntimeError):
                 compile_latex(source)
-
-    def test_latex_preview_strips_source_commands(self):
-        lines = latex_preview_lines(['\\documentclass{article}', '\\begin{document}',
-                                     '\\section*{Experience}', '\\item Built \\textbf{tools}',
-                                     '\\end{document}'])
-        self.assertEqual(lines, ['Experience', '• Built tools'])
-        noisy = latex_preview_lines(['\\definecolor{headercolor}{RGB}{173,100,82}',
-                                     '\\titlespacing*{\\section}{0em}{10pt}{6pt}',
-                                     '\\section*{Summary}', '0.3em', '\\textcolor{headercolor}{Visible}'])
-        self.assertEqual(noisy, ['Summary', 'Visible'])
-        self.assertTrue(make_latex_preview([
-            r'\definecolor{headercolor}{RGB}{173,100,82}', r'\color{headercolor}',
-            r'\section*{Summary}', 'Visible']).getvalue().startswith(b'%PDF'))
 
     def test_pdf_roundtrip_and_highlight(self):
         lines = ['Example Student', 'Experience', 'Built <widgets> & tools.']

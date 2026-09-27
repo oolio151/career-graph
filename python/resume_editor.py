@@ -52,7 +52,9 @@ def apply_latex_lines(lines):
 def compile_latex(data):
     """Compile a LaTeX source buffer into a PDF in an isolated temp directory."""
     source = extract_latex(data)
-    compiler = os.environ.get('LATEX_COMPILER', '').strip() or shutil.which('tectonic') or shutil.which('pdflatex')
+    local = Path(__file__).resolve().parent.parent / 'instance/bin/tectonic'
+    compiler = (os.environ.get('LATEX_COMPILER', '').strip() or
+                (str(local) if local.is_file() else None) or shutil.which('tectonic') or shutil.which('pdflatex'))
     if not compiler:
         raise RuntimeError('LaTeX preview is unavailable because no tectonic or pdflatex compiler is installed.')
     with tempfile.TemporaryDirectory(prefix='grit-latex-') as directory:
@@ -60,12 +62,14 @@ def compile_latex(data):
         tex = root / 'resume.tex'
         tex.write_text(source, encoding='utf-8')
         if Path(compiler).name == 'tectonic':
-            command = [compiler, '--outdir', str(root), str(tex)]
+            command = [compiler, '--untrusted', '--outdir', str(root), str(tex)]
         else:
             command = [compiler, '-interaction=nonstopmode', '-halt-on-error', '-no-shell-escape',
                        '-output-directory', str(root), str(tex)]
         try:
-            result = subprocess.run(command, cwd=root, capture_output=True, timeout=25, check=False)
+            env = {**os.environ, 'openin_any': 'p', 'openout_any': 'p',
+                   'XDG_CACHE_HOME': str(local.parent.parent / 'cache')}
+            result = subprocess.run(command, cwd=root, env=env, capture_output=True, timeout=90, check=False)
         except (OSError, subprocess.TimeoutExpired):
             raise RuntimeError('LaTeX preview timed out or could not start.') from None
         pdf = root / 'resume.pdf'
@@ -73,72 +77,6 @@ def compile_latex(data):
             detail = (result.stdout + result.stderr).decode('utf-8', 'replace')[-500:]
             raise RuntimeError('LaTeX could not compile this resume.' + (f' {detail}' if detail else ''))
         return BytesIO(pdf.read_bytes())
-
-
-def latex_preview_lines(lines):
-    """Turn common resume LaTeX constructs into readable fallback preview lines."""
-    output = []
-    for raw in lines:
-        line = raw.strip()
-        if not line or line.startswith('%') or line.startswith('\\documentclass'):
-            continue
-        if re.match(r'^\\(?:usepackage|geometry|hypersetup|pagestyle|set(?:length|counter|mainfont|komafont)?|newcommand|renewcommand|providecommand|definecolor|colorlet|titleformat|titlespacing|fancy(?:head|foot)|input|include|documentclass)', line):
-            continue
-        if line.startswith('\\begin{') or line.startswith('\\end{'):
-            continue
-        # Keep the visible argument for links and styled text, dropping styling arguments.
-        line = re.sub(r'\\(?:textcolor|colorbox)\{[^{}]*\}\{([^{}]*)\}', r'\1', line)
-        line = re.sub(r'\\(?:href|url)\{([^{}]*)\}(?:\{([^{}]*)\})?', lambda m: m.group(2) or m.group(1), line)
-        line = re.sub(r'\\(?:section|subsection|subsubsection|name|title|author|textbf|textit|emph|underline)\*?', '', line)
-        line = re.sub(r'\\item\s*', '• ', line)
-        line = re.sub(r'\\(?:vspace|hspace|smallskip|medskip|bigskip|noindent|newline|linebreak)(?:\s*\[[^]]*\])?(?:\{[^{}]*\})?', '', line)
-        line = re.sub(r'\\[a-zA-Z]+(?:\s*\[[^]]*\])?\s*', '', line)
-        line = re.sub(r'\\\\(?:\s*\[[^]]*\])?', ' ', line)
-        line = line.replace('\\&', '&').replace('\\%', '%').replace('\\_', '_').replace('\\#', '#').replace('\\$', '$').replace('~', ' ')
-        line = line.replace('{', '').replace('}', '').strip()
-        line = re.sub(r'\s+', ' ', line)
-        # Formatting-only remnants such as "0.3em" or "2428" are not resume content.
-        if re.fullmatch(r'[\d.]+(?:em|pt|ex|mm|cm|in)?', line, re.I):
-            continue
-        if line and line not in {'\\', '&', 'RGB', 'format', 'headercolor'}:
-            output.append(line)
-    return output or ['LaTeX preview could not extract readable text from this source.']
-
-
-def make_latex_preview(lines, changed=()):
-    """Render a readable fallback PDF while retaining common LaTeX colors."""
-    validate_lines(lines)
-    palette = {'black': colors.black, 'white': colors.white}
-    for raw in lines:
-        match = re.search(r'\\definecolor\{([^{}]+)\}\{RGB\}\{\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\}', raw)
-        if match:
-            palette[match.group(1)] = colors.Color(*(min(255, int(match.group(i))) / 255 for i in (2, 3, 4)))
-    active = 'black'
-    output = BytesIO()
-    doc = SimpleDocTemplate(output, pagesize=letter, leftMargin=46, rightMargin=46,
-                            topMargin=42, bottomMargin=42, title='LaTeX resume preview', author='')
-    story = []
-    for index, raw in enumerate(lines):
-        color_match = re.search(r'\\color\{([^{}]+)\}', raw)
-        if color_match and color_match.group(1) in palette:
-            active = color_match.group(1)
-        visible = latex_preview_lines([raw])
-        if not visible or visible[0].startswith('LaTeX preview could not'):
-            continue
-        for line in visible:
-            heading = line.strip().rstrip(':').lower() in {
-                'summary', 'experience', 'professional experience', 'education',
-                'additional skills', 'skills', 'projects', 'certifications'}
-            style = ParagraphStyle(
-                f'latex-{index}', fontName='ResumeBold' if heading else 'Resume',
-                fontSize=12 if heading else 10, leading=15 if heading else 14,
-                spaceBefore=9 if heading else 0, spaceAfter=5,
-                textColor=palette.get(active, colors.black),
-                backColor=colors.HexColor('#fff1b8') if index in changed else None)
-            story.append(Paragraph(escape(line), style))
-    doc.build(story)
-    output.seek(0)
-    return output
 
 
 def extract_pdf(data):
@@ -192,10 +130,10 @@ a line with multiple newline-separated lines to expand it, or an empty string to
 Never suggest a new name or contact details unless explicitly requested. No edits are applied
 until the student approves them. Previous proposals in history are not proof of acceptance.
 '''
-    context = {'background': dataset.resume_context(campus_id, '\n'.join(lines)),
+    context = {'background': dataset.resume_context(campus_id, 'See current_lines for the resume source.'),
                'current_lines': [{'line': i + 1, 'text': line} for i, line in enumerate(lines)],
                'recent_conversation': history, 'question': question}
-    raw = gemini.generate(json.dumps(context, ensure_ascii=False), instruction)
+    raw = gemini.generate(json.dumps(context, ensure_ascii=False), instruction, json_mode=True)
     try:
         parsed = json.loads(re.sub(r'^```(?:json)?\s*|\s*```$', '', raw.strip()))
         reply, edits = parsed['reply'], parsed['edits']

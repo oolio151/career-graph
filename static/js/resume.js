@@ -2,7 +2,7 @@
 const resumeCsrf = document.querySelector('meta[name="csrf-token"]').content;
 const resumeStudentId = document.body.dataset.studentId;
 let resumeLoaded = false, resumeLines = [], originalLines = [], undoEdits = [], resumeRevision = 0;
-let draftPdf = '', reviewPdf = '', originalPdf = '', resumeView = 'original', resumeBusy = false, resumeApproximate = false;
+let draftPdf = '', reviewPdf = '', originalPdf = '', resumeView = 'original', resumeBusy = false;
 const resumeEl = id => document.getElementById(id);
 async function resumeApi(url, options = {}) {
   const response = await fetch(url, options);
@@ -27,11 +27,11 @@ function renderResumeView() {
   const canvas = resumeEl('resume-canvas'); canvas.replaceChildren();
   canvas.classList.toggle('resume-comparison', resumeView === 'changes');
   if (resumeView === 'changes') {
-    for (const [url, title] of [[originalPdf, 'Original LaTeX source'], [reviewPdf, 'Updated LaTeX source — revised lines highlighted']]) {
+    for (const [url, title] of [[originalPdf, 'Original PDF'], [reviewPdf, 'Updated PDF']]) {
       const panel = document.createElement('section'); const heading = document.createElement('h3'); heading.textContent = title;
       panel.append(heading, resumeFrame(url, title)); canvas.append(panel);
     }
-  } else canvas.append(resumeFrame(resumeView === 'draft' ? draftPdf : originalPdf, resumeView === 'draft' ? 'Updated LaTeX source' : 'Original LaTeX source'));
+  } else if (resumeView === 'draft' ? draftPdf : originalPdf) canvas.append(resumeFrame(resumeView === 'draft' ? draftPdf : originalPdf, resumeView === 'draft' ? 'Updated PDF' : 'Original PDF'));
   document.querySelectorAll('[data-resume-view]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.resumeView === resumeView)));
 }
 function lineTools() {
@@ -40,21 +40,11 @@ function lineTools() {
   select.value = selected; resumeEl('resume-line-text').value = resumeLines[selected] || '';
 }
 async function buildPdfs(lines) {
-  const changed = lines.flatMap((line, i) => line !== originalLines[i] ? [i] : []);
-  const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 30000);
+  const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 100000);
   try {
-    const [draft, review] = await Promise.all([[], changed].map(async marks => {
-      try {
-        const response = await resumeApi('/api/resume/render', {...resumePost({lines, changed: marks, format: 'pdf'}), signal: controller.signal});
-        if (response.headers.get('X-LaTeX-Preview') === 'approximate') resumeApproximate = true;
-        return response.blob();
-      } catch (error) {
-        // A local install may not have a TeX compiler. Keep editing usable with a source preview.
-        const response = await resumeApi('/api/resume/render', {...resumePost({lines, changed: marks, format: 'source'}), signal: controller.signal});
-        return response.blob();
-      }
-    }));
-    return [URL.createObjectURL(draft), URL.createObjectURL(review)];
+    const response = await resumeApi('/api/resume/render', {...resumePost({lines, format: 'pdf'}), signal: controller.signal});
+    const pdf = await response.blob();
+    return [URL.createObjectURL(pdf), URL.createObjectURL(pdf)];
   } finally { clearTimeout(timeout); }
 }
 async function replaceLine(index, before, after, revision) {
@@ -62,7 +52,7 @@ async function replaceLine(index, before, after, revision) {
   if (resumeLines[index] !== before) {
     resumeMessage('The draft has changed since this proposal. Ask for a fresh edit to that line.'); return;
   }
-  const next = [...resumeLines]; next[index] = after;
+  const next = [...resumeLines]; next.splice(index, 1, ...after.split('\n'));
   if (next.every(line => !line.trim())) { resumeMessage('Keep at least one readable resume line.'); return; }
   resumeLock(true); resumeEl('resume-file-note').textContent = 'Preparing updated LaTeX source…';
   try {
@@ -78,9 +68,7 @@ function commitPdf(urls) {
   [draftPdf, reviewPdf] = urls; resumeRevision++;
   const changed = resumeLines.filter((line, i) => line !== originalLines[i]).length;
   resumeEl('resume-change-count').textContent = changed;
-  resumeEl('resume-file-note').textContent = resumeApproximate
-    ? 'Approximate preview: install tectonic or pdflatex for faithful colors, fonts, and layout.'
-    : 'Compiled LaTeX preview. Your downloaded source preserves the original formatting.';
+  resumeEl('resume-file-note').textContent = 'Compiled LaTeX preview. Your downloaded source preserves the original formatting.';
   resumeEl('download-draft').disabled = false;
   document.querySelectorAll('[data-resume-view]').forEach(el => el.disabled = false);
   lineTools(); resumeView = 'draft'; renderResumeView();
@@ -118,17 +106,14 @@ async function loadResume() {
     resumeLines = data.lines; originalLines = [...data.lines]; undoEdits = []; resumeRevision++;
     try {
       const response = await resumeApi('/api/resume/render', {...resumePost({lines: originalLines, changed: [], format: 'pdf'})});
-      if (response.headers.get('X-LaTeX-Preview') === 'approximate') resumeApproximate = true;
       originalPdf = URL.createObjectURL(await response.blob());
     } catch (error) {
-      originalPdf = `/api/resume/file?v=${Date.now()}`;
+      originalPdf = ''; resumeMessage(`PDF preview unavailable: ${error.message}`);
     }
     resumeView = 'original'; renderResumeView();
     resumeEl('resume-filename').textContent = data.filename;
     resumeEl('resume-upload-prompt').hidden = true; resumeEl('resume-line-tools').hidden = false;
-    resumeEl('resume-file-note').textContent = resumeApproximate
-      ? 'Approximate LaTeX preview. Install tectonic or pdflatex for faithful formatting.'
-      : 'Compiled LaTeX preview. Accepted edits change only the selected source lines.';
+    resumeEl('resume-file-note').textContent = originalPdf ? 'Compiled LaTeX preview. Accepted edits change only the selected source lines.' : 'PDF compilation failed. See the error in the conversation; source editing is available.';
     lineTools();
     resumeMessage('What would you like to strengthen? We can discuss a section first, or select a source line under “Review extracted lines” to focus on its wording.');
   } catch (error) {
@@ -141,7 +126,7 @@ async function sendResumeChat(question) {
   const message = question.trim().slice(0, 1000); resumeMessage(message, 'user'); resumeEl('resume-chat-input').value = '';
   resumeLock(true);
   const pending = resumeMessage('Thinking through your resume…'); pending.classList.add('pending');
-  const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 45000);
+  const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 100000);
   try {
     const data = await (await resumeApi('/api/resume/editor/chat', {...resumePost({message, lines: resumeLines}), signal: controller.signal})).json();
     resumeMessage(data.reply, 'advisor', data.edits, data.model);

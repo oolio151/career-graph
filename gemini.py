@@ -9,7 +9,7 @@ import urllib.request
 
 ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 DEFAULT_MODEL = "gemini-3.5-flash-lite"
-TIMEOUT = 30
+TIMEOUT = 90
 # Gemini 3 reasons by default and its thinking tokens are drawn from the same
 # maxOutputTokens budget, so a small cap silently truncates the visible reply.
 MAX_OUTPUT_TOKENS = 2048
@@ -30,11 +30,13 @@ class Gemini:
     def enabled(self):
         return bool(self.api_key)
 
-    def generate(self, prompt, system_instruction=None):
+    def generate(self, prompt, system_instruction=None, *, json_mode=False):
         """Return assistant text for one prompt, or raise GeminiError."""
         if not self.api_key:
             raise GeminiError("No GEMINI_API_KEY is configured.")
         generation_config = {"temperature": 0.4, "maxOutputTokens": MAX_OUTPUT_TOKENS}
+        if json_mode:
+            generation_config.update(responseMimeType='application/json', maxOutputTokens=4096)
         if self.model.startswith("gemini-3"):
             # Lower reasoning leaves the output budget for the answer itself.
             # Older models reject thinkingLevel, so only send it to Gemini 3.
@@ -64,6 +66,8 @@ class Gemini:
             raise GeminiError(f"Could not reach Gemini: {error}.") from None
         except (ValueError, KeyError):
             raise GeminiError("Gemini sent a response we could not read.") from None
+        if json_mode and any(c.get('finishReason') == 'MAX_TOKENS' for c in payload.get('candidates', [])):
+            raise GeminiError('The edit exceeded Gemini’s output limit. Request one shorter change at a time.')
         return self._first_text(payload)
 
     def _first_text(self, payload):
@@ -73,6 +77,8 @@ class Gemini:
         candidates = payload.get("candidates") or []
         for candidate in candidates:
             for part in (candidate.get("content") or {}).get("parts") or []:
+                if part.get('thought'):
+                    continue
                 text = (part.get("text") or "").strip()
                 if text:
                     return self._note_truncation(text, candidate.get("finishReason"))

@@ -60,10 +60,18 @@ dismiss each proposal, make a precise manual edit, and undo accepted changes. Up
 comparison source views preserve the original document class, packages, and formatting;
 download the revised `.tex` and compile it with the same toolchain as the original.
 
-**LaTeX preview.** If `tectonic` or `pdflatex` is installed, each draft is compiled in an
-isolated temporary directory with shell escape disabled and a short timeout. Set
-`LATEX_COMPILER` to an explicit compiler path when needed. Without a compiler, the workspace
-falls back to showing the source so editing and downloading still work.
+**LaTeX preview.** Previews use real compilation; compilation failures are shown in the
+conversation and never replaced with an approximate document. The compiler is resolved from
+`LATEX_COMPILER`, `instance/bin/tectonic`, or an installed `tectonic`/`pdflatex` on PATH.
+This local workspace has the official portable Tectonic binary in `instance/bin/tectonic`;
+that ignored binary must also be installed when deploying or cloning elsewhere. Tectonic
+runs with `--untrusted`, and its packages are cached in `instance/cache` (the first compile
+requires network access). Compilations have a 90-second timeout. Single-file resumes must
+use installed packages; external custom class files and images are not uploaded with `.tex`.
+Original and updated PDFs are compared side by side without modifying their typography.
+
+Gemini edit requests use JSON output, include the source once, and allow 90 seconds on the
+server and 100 seconds in the browser. Recent conversation and profile context are retained.
 
 **Conversation memory.** Resume chat includes up to eight previous successful Gemini
 exchanges, capped at 12,000 characters, alongside the current resume lines and profile context.
