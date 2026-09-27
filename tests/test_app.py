@@ -139,6 +139,19 @@ class AppTests(unittest.TestCase):
         self.enroll(content=document.getvalue(), filename="resume.docx")
         self.assertEqual(self.client.get("/api/resume/preview").json["paragraphs"], ["Campus Editor"])
 
+    def test_latex_renderer_validates_source(self):
+        self.enroll()
+        headers = {"X-CSRF-Token": self.csrf}
+        missing_document = self.client.post("/api/resume/render", json={"source": "hello"}, headers=headers)
+        self.assertEqual(missing_document.status_code, 400)
+        unsafe = self.client.post(
+            "/api/resume/render",
+            json={"source": r"\documentclass{article}\begin{document}\input{secret}\end{document}"},
+            headers=headers,
+        )
+        self.assertEqual(unsafe.status_code, 400)
+        self.assertIn("disabled", unsafe.json["error"])
+
 
 class CalculationTests(unittest.TestCase):
     def fixture(self):

@@ -26,6 +26,7 @@
           <p id="resume-file-note" class="field-hint"></p>
         </div>
         <div class="resume-stage-actions">
+          <button type="button" class="primary-button" id="render-latex">Render PDF</button>
           <button type="button" class="secondary-button" id="download-draft">Download draft</button>
           <a class="secondary-button" href="/api/resume">Original</a>
         </div>
@@ -33,6 +34,8 @@
       <div class="resume-tabs" role="tablist" aria-label="Resume views">
         <button type="button" role="tab" aria-selected="true" data-resume-view="draft">Draft</button>
         <button type="button" role="tab" aria-selected="false" data-resume-view="changes">Changes <span id="resume-change-count">0</span></button>
+        <button type="button" role="tab" aria-selected="false" data-resume-view="latex">LaTeX</button>
+        <button type="button" role="tab" aria-selected="false" data-resume-view="preview">Preview</button>
         <button type="button" role="tab" aria-selected="false" data-resume-view="original">Original</button>
       </div>
       <div id="resume-upload-prompt" class="resume-upload-prompt" hidden>

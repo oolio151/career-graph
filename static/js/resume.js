@@ -12,6 +12,67 @@ let resumePreview = null;
 let originalResumeText = "";
 let draftResumeText = "";
 let activeResumeView = "draft";
+let latexSource = "";
+let renderedPdfUrl = "";
+
+const latexEscape = (value) => String(value ?? "")
+  .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+  .replace(/\\/g, "\\textbackslash{}")
+  .replace(/([#$%&_{}])/g, "\\$1")
+  .replace(/\^/g, "\\textasciicircum{}")
+  .replace(/~/g, "\\textasciitilde{}");
+
+function draftToLatex(text) {
+  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const name = latexEscape(lines.shift() || "Your Name");
+  const contact = latexEscape(lines.shift() || "email@example.com | linkedin.com/in/you | github.com/you");
+  const sectionNames = new Set(["Education", "Experience", "Projects", "Technical Skills", "Leadership", "Skills", "Research"]);
+  let body = "";
+  let listOpen = false;
+  for (const raw of lines) {
+    const normalized = raw.replace(/:$/, "");
+    if (sectionNames.has(normalized)) {
+      if (listOpen) body += "\\resumeItemListEnd\n";
+      body += `\n\\section{${latexEscape(normalized)}}\n\\resumeItemListStart\n`;
+      listOpen = true;
+    } else {
+      if (!listOpen) { body += "\\section{Profile}\n\\resumeItemListStart\n"; listOpen = true; }
+      body += `  \\resumeItem{${latexEscape(raw)}}\n`;
+    }
+  }
+  if (listOpen) body += "\\resumeItemListEnd\n";
+  return `\\documentclass[letterpaper,11pt]{article}
+\\usepackage[empty]{fullpage}
+\\usepackage{titlesec}
+\\usepackage[usenames,dvipsnames]{color}
+\\usepackage{enumitem}
+\\usepackage[hidelinks]{hyperref}
+\\usepackage{fancyhdr}
+\\usepackage[english]{babel}
+\\pagestyle{fancy}
+\\fancyhf{}
+\\renewcommand{\\headrulewidth}{0pt}
+\\renewcommand{\\footrulewidth}{0pt}
+\\addtolength{\\oddsidemargin}{-0.5in}
+\\addtolength{\\evensidemargin}{-0.5in}
+\\addtolength{\\textwidth}{1in}
+\\addtolength{\\topmargin}{-.5in}
+\\addtolength{\\textheight}{1.0in}
+\\raggedbottom
+\\raggedright
+\\titleformat{\\section}{\\vspace{-4pt}\\scshape\\raggedright\\large}{}{0em}{}[\\color{black}\\titlerule \\vspace{-5pt}]
+\\newcommand{\\resumeItem}[1]{\\item\\small{{#1 \\vspace{-2pt}}}}
+\\newcommand{\\resumeItemListStart}{\\begin{itemize}[leftmargin=0.18in]}
+\\newcommand{\\resumeItemListEnd}{\\end{itemize}\\vspace{-5pt}}
+\\begin{document}
+\\begin{center}
+  \\textbf{\\Huge \\scshape ${name}} \\\\ \\vspace{2pt}
+  \\small ${contact}
+\\end{center}
+${body}
+\\end{document}
+`;
+}
 
 async function resumeApi(url, options) {
   const response = await fetch(url, options);
@@ -101,6 +162,15 @@ function renderResumeView() {
     const rows = diffLines(originalResumeText, draftResumeText).map(([type, line]) =>
       `<div class="diff-line ${type}"><span aria-hidden="true">${type === "add" ? "+" : type === "remove" ? "−" : " "}</span><code>${resumeEscape(line || " ")}</code></div>`).join("");
     canvas.innerHTML = `<div class="resume-diff" aria-label="Resume changes">${rows}</div>`;
+  } else if (activeResumeView === "latex") {
+    note.textContent = "Edit the LaTeX source, then render a fresh PDF preview.";
+    canvas.innerHTML = `<textarea class="latex-editor" id="latex-editor" spellcheck="false" aria-label="LaTeX resume source">${resumeEscape(latexSource)}</textarea>`;
+    document.querySelector("#latex-editor").addEventListener("input", (event) => { latexSource = event.target.value; });
+  } else if (activeResumeView === "preview") {
+    note.textContent = renderedPdfUrl ? "Rendered from the current LaTeX source." : "Render the LaTeX source to create a PDF preview.";
+    canvas.innerHTML = renderedPdfUrl
+      ? `<iframe class="resume-frame" title="Rendered resume PDF" src="${renderedPdfUrl}"></iframe>`
+      : `<div class="render-empty"><strong>No rendered PDF yet.</strong><p>Select LaTeX to edit the source, then choose Render PDF.</p></div>`;
   } else if (resumePreview.extension === ".pdf") {
     note.textContent = "Your untouched uploaded PDF.";
     canvas.innerHTML = `<iframe class="resume-frame" title="${resumeEscape(resumePreview.filename)}" src="/api/resume/view/${encodeURIComponent(resumePreview.filename)}"></iframe>`;
@@ -112,6 +182,7 @@ function renderResumeView() {
 
 function setResumeView(view) {
   if (activeResumeView === "draft") draftResumeText = currentDraft();
+  if (activeResumeView === "latex") latexSource = document.querySelector("#latex-editor")?.value ?? latexSource;
   activeResumeView = view;
   document.querySelectorAll("[data-resume-view]").forEach((button) => {
     button.setAttribute("aria-selected", String(button.dataset.resumeView === view));
@@ -124,6 +195,7 @@ function renderResumeFile(preview) {
   resumePreview = preview;
   originalResumeText = preview.text || preview.paragraphs.join("\n");
   draftResumeText = originalResumeText;
+  latexSource = draftToLatex(draftResumeText);
   document.querySelector("#resume-filename").textContent = preview.filename;
   activeResumeView = "draft";
   setResumeView("draft");
@@ -228,6 +300,36 @@ document.querySelector("#download-draft").addEventListener("click", () => {
   link.download = `${(resumePreview?.filename || "resume").replace(/\.[^.]+$/, "")}-draft.txt`;
   link.click();
   URL.revokeObjectURL(link.href);
+});
+document.querySelector("#render-latex").addEventListener("click", async (event) => {
+  const button = event.currentTarget;
+  if (activeResumeView === "draft") {
+    draftResumeText = currentDraft();
+    latexSource = draftToLatex(draftResumeText);
+  } else if (activeResumeView === "latex") {
+    latexSource = document.querySelector("#latex-editor").value;
+  }
+  button.disabled = true;
+  button.textContent = "Rendering…";
+  try {
+    const response = await fetch("/api/resume/render", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": resumeCsrf },
+      body: JSON.stringify({ source: latexSource }),
+    });
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || "Could not render this LaTeX source.");
+    }
+    if (renderedPdfUrl) URL.revokeObjectURL(renderedPdfUrl);
+    renderedPdfUrl = URL.createObjectURL(await response.blob());
+    setResumeView("preview");
+  } catch (error) {
+    resumeMessage(error.message || "Could not render this LaTeX source.", "advisor");
+  } finally {
+    button.disabled = false;
+    button.textContent = "Render PDF";
+  }
 });
 
 if (location.hash === "#resume") loadResume();
