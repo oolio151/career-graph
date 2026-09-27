@@ -1,337 +1,184 @@
 "use strict";
-
-const resumeEscape = (value) =>
-  String(value ?? "").replace(/[&<>"']/g, (character) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]),
-  );
-
 const resumeCsrf = document.querySelector('meta[name="csrf-token"]').content;
-let resumeLoaded = false;
 const resumeStudentId = document.body.dataset.studentId;
-let resumePreview = null;
-let originalResumeText = "";
-let draftResumeText = "";
-let activeResumeView = "draft";
-let latexSource = "";
-let renderedPdfUrl = "";
-
-const latexEscape = (value) => String(value ?? "")
-  .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
-  .replace(/\\/g, "\\textbackslash{}")
-  .replace(/([#$%&_{}])/g, "\\$1")
-  .replace(/\^/g, "\\textasciicircum{}")
-  .replace(/~/g, "\\textasciitilde{}");
-
-function draftToLatex(text) {
-  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-  const name = latexEscape(lines.shift() || "Your Name");
-  const contact = latexEscape(lines.shift() || "email@example.com | linkedin.com/in/you | github.com/you");
-  const sectionNames = new Set(["Education", "Experience", "Projects", "Technical Skills", "Leadership", "Skills", "Research"]);
-  let body = "";
-  let listOpen = false;
-  for (const raw of lines) {
-    const normalized = raw.replace(/:$/, "");
-    if (sectionNames.has(normalized)) {
-      if (listOpen) body += "\\resumeItemListEnd\n";
-      body += `\n\\section{${latexEscape(normalized)}}\n\\resumeItemListStart\n`;
-      listOpen = true;
-    } else {
-      if (!listOpen) { body += "\\section{Profile}\n\\resumeItemListStart\n"; listOpen = true; }
-      body += `  \\resumeItem{${latexEscape(raw)}}\n`;
-    }
-  }
-  if (listOpen) body += "\\resumeItemListEnd\n";
-  return `\\documentclass[letterpaper,11pt]{article}
-\\usepackage[empty]{fullpage}
-\\usepackage{titlesec}
-\\usepackage[usenames,dvipsnames]{color}
-\\usepackage{enumitem}
-\\usepackage[hidelinks]{hyperref}
-\\usepackage{fancyhdr}
-\\usepackage[english]{babel}
-\\pagestyle{fancy}
-\\fancyhf{}
-\\renewcommand{\\headrulewidth}{0pt}
-\\renewcommand{\\footrulewidth}{0pt}
-\\addtolength{\\oddsidemargin}{-0.5in}
-\\addtolength{\\evensidemargin}{-0.5in}
-\\addtolength{\\textwidth}{1in}
-\\addtolength{\\topmargin}{-.5in}
-\\addtolength{\\textheight}{1.0in}
-\\raggedbottom
-\\raggedright
-\\titleformat{\\section}{\\vspace{-4pt}\\scshape\\raggedright\\large}{}{0em}{}[\\color{black}\\titlerule \\vspace{-5pt}]
-\\newcommand{\\resumeItem}[1]{\\item\\small{{#1 \\vspace{-2pt}}}}
-\\newcommand{\\resumeItemListStart}{\\begin{itemize}[leftmargin=0.18in]}
-\\newcommand{\\resumeItemListEnd}{\\end{itemize}\\vspace{-5pt}}
-\\begin{document}
-\\begin{center}
-  \\textbf{\\Huge \\scshape ${name}} \\\\ \\vspace{2pt}
-  \\small ${contact}
-\\end{center}
-${body}
-\\end{document}
-`;
-}
-
-async function resumeApi(url, options) {
+let resumeLoaded = false, resumeLines = [], originalLines = [], undoEdits = [], resumeRevision = 0;
+let draftPdf = '', reviewPdf = '', originalPdf = '', resumeView = 'original', resumeBusy = false, resumeApproximate = false;
+const resumeEl = id => document.getElementById(id);
+async function resumeApi(url, options = {}) {
   const response = await fetch(url, options);
-  const data = await response.json();
-  if (response.status === 401) {
-    location.assign("/");
-    throw new Error("Your session ended.");
+  if (response.status === 401) { location.assign('/'); throw new Error('Your session ended.'); }
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || 'The request failed. Please try again.');
   }
-  if (!response.ok) throw new Error(data.error || "Could not load this information. Please try again.");
-  return data;
+  return response;
 }
-
-function resumeMessage(text, sender, suggestion, ai = false) {
-  const log = document.querySelector("#resume-messages");
-  const message = document.createElement("div");
-  message.className = `message ${sender === "user" ? "user" : "advisor"}`;
-  const label = document.createElement("span");
-  label.className = "message-label";
-  label.textContent = sender === "user" ? "You" : (ai ? "Gemini · grounded" : "Resume chat");
-  const body = document.createElement("p");
-  body.textContent = text;
-  message.append(label, body);
-  if (suggestion) {
-    const line = document.createElement("p");
-    line.className = "resume-suggestion";
-    line.textContent = suggestion;
-    const action = document.createElement("button");
-    action.type = "button";
-    action.className = "secondary-button";
-    action.textContent = "Apply change";
-    action.addEventListener("click", () => {
-      const existing = currentDraft();
-      draftResumeText = `${existing.trimEnd()}${existing.trim() ? "\n" : ""}${suggestion}`;
-      if (activeResumeView !== "draft") setResumeView("draft");
-      const editor = document.querySelector("#resume-draft");
-      editor.value = draftResumeText;
-      editor.focus();
-      editor.setSelectionRange(editor.value.length, editor.value.length);
-      updateChangeCount();
-      action.textContent = "Applied";
-      action.disabled = true;
-    });
-    message.append(line, action);
-  }
-  log.append(message);
-  log.scrollTop = log.scrollHeight;
+const resumePost = data => ({method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': resumeCsrf}, body: JSON.stringify(data)});
+function resumeLock(value) {
+  resumeBusy = value;
+  document.querySelectorAll('#resume-chat-form button, [data-resume-prompt], #resume-line-save, #resume-line-ask, #resume-upload-form button, .resume-edit-accept').forEach(el => el.disabled = value || !resumeLines.length);
+  resumeEl('resume-upload-form').querySelector('button').disabled = value;
+  resumeEl('resume-undo').disabled = value || !undoEdits.length;
 }
-
-function currentDraft() {
-  return document.querySelector("#resume-draft")?.value ?? draftResumeText;
+function resumeFrame(url, title) {
+  const frame = document.createElement('iframe'); frame.className = 'resume-frame'; frame.src = url; frame.title = title; return frame;
 }
-
-function diffLines(before, after) {
-  const a = before.split(/\r?\n/);
-  const b = after.split(/\r?\n/);
-  const table = Array.from({ length: a.length + 1 }, () => new Uint16Array(b.length + 1));
-  for (let i = a.length - 1; i >= 0; i--) {
-    for (let j = b.length - 1; j >= 0; j--) {
-      table[i][j] = a[i] === b[j] ? table[i + 1][j + 1] + 1 : Math.max(table[i + 1][j], table[i][j + 1]);
-    }
-  }
-  const changes = [];
-  let i = 0, j = 0;
-  while (i < a.length || j < b.length) {
-    if (i < a.length && j < b.length && a[i] === b[j]) { changes.push(["same", a[i]]); i++; j++; }
-    else if (j < b.length && (i === a.length || table[i][j + 1] >= table[i + 1][j])) { changes.push(["add", b[j++]]); }
-    else { changes.push(["remove", a[i++]]); }
-  }
-  return changes;
-}
-
-function updateChangeCount() {
-  draftResumeText = currentDraft();
-  const count = diffLines(originalResumeText, draftResumeText).filter(([type]) => type !== "same").length;
-  document.querySelector("#resume-change-count").textContent = count;
-}
-
 function renderResumeView() {
-  const canvas = document.querySelector("#resume-canvas");
-  const note = document.querySelector("#resume-file-note");
-  if (activeResumeView === "draft") {
-    note.textContent = "Your editable working copy. AI changes are applied only when you approve them.";
-    canvas.innerHTML = `<textarea class="resume-draft" id="resume-draft" spellcheck="true" aria-label="Editable resume draft">${resumeEscape(draftResumeText)}</textarea>`;
-    document.querySelector("#resume-draft").addEventListener("input", updateChangeCount);
-  } else if (activeResumeView === "changes") {
-    note.textContent = "Review every line changed from the uploaded resume.";
-    const rows = diffLines(originalResumeText, draftResumeText).map(([type, line]) =>
-      `<div class="diff-line ${type}"><span aria-hidden="true">${type === "add" ? "+" : type === "remove" ? "−" : " "}</span><code>${resumeEscape(line || " ")}</code></div>`).join("");
-    canvas.innerHTML = `<div class="resume-diff" aria-label="Resume changes">${rows}</div>`;
-  } else if (activeResumeView === "latex") {
-    note.textContent = "Edit the LaTeX source, then render a fresh PDF preview.";
-    canvas.innerHTML = `<textarea class="latex-editor" id="latex-editor" spellcheck="false" aria-label="LaTeX resume source">${resumeEscape(latexSource)}</textarea>`;
-    document.querySelector("#latex-editor").addEventListener("input", (event) => { latexSource = event.target.value; });
-  } else if (activeResumeView === "preview") {
-    note.textContent = renderedPdfUrl ? "Rendered from the current LaTeX source." : "Render the LaTeX source to create a PDF preview.";
-    canvas.innerHTML = renderedPdfUrl
-      ? `<iframe class="resume-frame" title="Rendered resume PDF" src="${renderedPdfUrl}"></iframe>`
-      : `<div class="render-empty"><strong>No rendered PDF yet.</strong><p>Select LaTeX to edit the source, then choose Render PDF.</p></div>`;
-  } else if (resumePreview.extension === ".pdf") {
-    note.textContent = "Your untouched uploaded PDF.";
-    canvas.innerHTML = `<iframe class="resume-frame" title="${resumeEscape(resumePreview.filename)}" src="/api/resume/view/${encodeURIComponent(resumePreview.filename)}"></iframe>`;
-  } else {
-    note.textContent = "Your untouched uploaded text.";
-    canvas.innerHTML = `<pre class="resume-original">${resumeEscape(originalResumeText)}</pre>`;
+  const canvas = resumeEl('resume-canvas'); canvas.replaceChildren();
+  canvas.classList.toggle('resume-comparison', resumeView === 'changes');
+  if (resumeView === 'changes') {
+    for (const [url, title] of [[originalPdf, 'Original LaTeX source'], [reviewPdf, 'Updated LaTeX source — revised lines highlighted']]) {
+      const panel = document.createElement('section'); const heading = document.createElement('h3'); heading.textContent = title;
+      panel.append(heading, resumeFrame(url, title)); canvas.append(panel);
+    }
+  } else canvas.append(resumeFrame(resumeView === 'draft' ? draftPdf : originalPdf, resumeView === 'draft' ? 'Updated LaTeX source' : 'Original LaTeX source'));
+  document.querySelectorAll('[data-resume-view]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.resumeView === resumeView)));
+}
+function lineTools() {
+  const select = resumeEl('resume-line'); const selected = Math.min(Number(select.value) || 0, resumeLines.length - 1);
+  select.replaceChildren(...resumeLines.map((line, i) => new Option(`${i + 1}: ${line.slice(0, 110) || '(blank)'}`, i)));
+  select.value = selected; resumeEl('resume-line-text').value = resumeLines[selected] || '';
+}
+async function buildPdfs(lines) {
+  const changed = lines.flatMap((line, i) => line !== originalLines[i] ? [i] : []);
+  const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 30000);
+  try {
+    const [draft, review] = await Promise.all([[], changed].map(async marks => {
+      try {
+        const response = await resumeApi('/api/resume/render', {...resumePost({lines, changed: marks, format: 'pdf'}), signal: controller.signal});
+        if (response.headers.get('X-LaTeX-Preview') === 'approximate') resumeApproximate = true;
+        return response.blob();
+      } catch (error) {
+        // A local install may not have a TeX compiler. Keep editing usable with a source preview.
+        const response = await resumeApi('/api/resume/render', {...resumePost({lines, changed: marks, format: 'source'}), signal: controller.signal});
+        return response.blob();
+      }
+    }));
+    return [URL.createObjectURL(draft), URL.createObjectURL(review)];
+  } finally { clearTimeout(timeout); }
+}
+async function replaceLine(index, before, after, revision) {
+  if (resumeBusy) return;
+  if (resumeLines[index] !== before) {
+    resumeMessage('The draft has changed since this proposal. Ask for a fresh edit to that line.'); return;
   }
+  const next = [...resumeLines]; next[index] = after;
+  if (next.every(line => !line.trim())) { resumeMessage('Keep at least one readable resume line.'); return; }
+  resumeLock(true); resumeEl('resume-file-note').textContent = 'Preparing updated LaTeX source…';
+  try {
+    const urls = await buildPdfs(next);
+    undoEdits.push([...resumeLines]); if (undoEdits.length > 20) undoEdits.shift();
+    resumeLines = next; commitPdf(urls);
+    return true;
+  } catch (error) { resumeEl('resume-file-note').textContent = 'The draft is unchanged. Try the edit again.'; resumeMessage(`The change was not applied. ${error.message}`); }
+  finally { resumeLock(false); }
 }
-
-function setResumeView(view) {
-  if (activeResumeView === "draft") draftResumeText = currentDraft();
-  if (activeResumeView === "latex") latexSource = document.querySelector("#latex-editor")?.value ?? latexSource;
-  activeResumeView = view;
-  document.querySelectorAll("[data-resume-view]").forEach((button) => {
-    button.setAttribute("aria-selected", String(button.dataset.resumeView === view));
+function commitPdf(urls) {
+  if (draftPdf) URL.revokeObjectURL(draftPdf); if (reviewPdf) URL.revokeObjectURL(reviewPdf);
+  [draftPdf, reviewPdf] = urls; resumeRevision++;
+  const changed = resumeLines.filter((line, i) => line !== originalLines[i]).length;
+  resumeEl('resume-change-count').textContent = changed;
+  resumeEl('resume-file-note').textContent = resumeApproximate
+    ? 'Approximate preview: install tectonic or pdflatex for faithful colors, fonts, and layout.'
+    : 'Compiled LaTeX preview. Your downloaded source preserves the original formatting.';
+  resumeEl('download-draft').disabled = false;
+  document.querySelectorAll('[data-resume-view]').forEach(el => el.disabled = false);
+  lineTools(); resumeView = 'draft'; renderResumeView();
+}
+function resumeMessage(text, sender = 'advisor', edits = [], model = '') {
+  const box = document.createElement('div'); box.className = `message ${sender}`;
+  const label = document.createElement('span'); label.className = 'message-label'; label.textContent = sender === 'user' ? 'You' : model ? `Gemini · ${model}` : 'Resume studio';
+  const body = document.createElement('p'); body.textContent = text; box.append(label, body);
+  const revision = resumeRevision;
+  edits.forEach(edit => {
+    const proposal = document.createElement('section'); proposal.className = 'resume-proposal';
+    for (const [heading, value] of [[`Line ${edit.line} · Current`, edit.before], ['Proposed', edit.after || '(Remove this line)'], ['Why', edit.reason]]) {
+      const title = document.createElement('strong'); title.textContent = heading;
+      const copy = document.createElement('p'); copy.textContent = value; proposal.append(title, copy);
+    }
+    const accept = document.createElement('button'); accept.type = 'button'; accept.className = 'secondary-button resume-edit-accept'; accept.textContent = `Replace line ${edit.line}`;
+    const dismiss = document.createElement('button'); dismiss.type = 'button'; dismiss.className = 'inline-link'; dismiss.textContent = 'Dismiss';
+    accept.addEventListener('click', async () => {
+      if (await replaceLine(edit.line - 1, edit.before, edit.after, revision)) {
+        accept.remove(); dismiss.remove(); const done = document.createElement('p'); done.textContent = 'Applied to source'; proposal.append(done);
+      }
+    });
+    dismiss.addEventListener('click', () => proposal.remove()); proposal.append(accept, dismiss); box.append(proposal);
   });
-  renderResumeView();
-  updateChangeCount();
+  resumeEl('resume-messages').append(box); resumeEl('resume-messages').scrollTop = resumeEl('resume-messages').scrollHeight;
+  return box;
 }
-
-function renderResumeFile(preview) {
-  resumePreview = preview;
-  originalResumeText = preview.text || preview.paragraphs.join("\n");
-  draftResumeText = originalResumeText;
-  latexSource = draftToLatex(draftResumeText);
-  document.querySelector("#resume-filename").textContent = preview.filename;
-  activeResumeView = "draft";
-  setResumeView("draft");
-}
-
-function showResumeUpload() {
-  document.querySelector("#resume-upload-prompt").hidden = false;
-  document.querySelector("#resume-canvas").hidden = true;
-  document.querySelector("#resume-filename").textContent = "No resume uploaded";
-  document.querySelector("#resume-file-note").textContent = "Upload a file below to open Resume Studio.";
-  document.querySelector(".resume-stage-bar a").hidden = true;
-}
-
 async function loadResume() {
   if (resumeLoaded) return;
-  resumeLoaded = true;
+  resumeLoaded = true; resumeLock(true);
   try {
-    const session = await resumeApi("/api/session");
-    if (!session.resume || !session.resume.filename) {
-      showResumeUpload();
-      resumeMessage("Upload a resume to preview it and ask for suggestions.", "advisor");
-      return;
+    const session = await (await resumeApi('/api/session')).json();
+    if (!session.resume?.filename) throw new Error('Upload your LaTeX source to begin.');
+    const data = await (await resumeApi('/api/resume/editor')).json();
+    resumeLines = data.lines; originalLines = [...data.lines]; undoEdits = []; resumeRevision++;
+    try {
+      const response = await resumeApi('/api/resume/render', {...resumePost({lines: originalLines, changed: [], format: 'pdf'})});
+      if (response.headers.get('X-LaTeX-Preview') === 'approximate') resumeApproximate = true;
+      originalPdf = URL.createObjectURL(await response.blob());
+    } catch (error) {
+      originalPdf = `/api/resume/file?v=${Date.now()}`;
     }
-    const preview = await resumeApi("/api/resume/preview");
-    renderResumeFile(preview);
-    resumeMessage(
-      `${preview.filename} is now an editable draft. Ask for improvements, apply the ones you want, then review Changes.`,
-      "advisor",
-    );
+    resumeView = 'original'; renderResumeView();
+    resumeEl('resume-filename').textContent = data.filename;
+    resumeEl('resume-upload-prompt').hidden = true; resumeEl('resume-line-tools').hidden = false;
+    resumeEl('resume-file-note').textContent = resumeApproximate
+      ? 'Approximate LaTeX preview. Install tectonic or pdflatex for faithful formatting.'
+      : 'Compiled LaTeX preview. Accepted edits change only the selected source lines.';
+    lineTools();
+    resumeMessage('What would you like to strengthen? We can discuss a section first, or select a source line under “Review extracted lines” to focus on its wording.');
   } catch (error) {
-    resumeLoaded = false;
-    document.querySelector("#resume-file-note").textContent = error.message || "Could not open the resume.";
-  }
+    resumeLoaded = false; resumeEl('resume-upload-prompt').hidden = false;
+    resumeEl('resume-upload-status').textContent = error.message;
+  } finally { resumeLock(false); }
 }
-
-document.querySelector("#resume-upload-form").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const form = event.currentTarget;
-  const file = document.querySelector("#resume-upload-file").files[0];
-  const status = document.querySelector("#resume-upload-status");
-  const button = form.querySelector("button");
-  if (!file || !file.size || file.size > 5 * 1024 * 1024) {
-    status.textContent = "Choose a nonempty resume smaller than 5 MB.";
-    return;
-  }
-  const body = new FormData();
-  body.set("campus_id", resumeStudentId);
-  body.set("resume", file);
-  button.disabled = true;
-  status.textContent = "Uploading…";
-  try {
-    const data = await resumeApi("/api/enroll", { method: "POST", headers: { "X-CSRF-Token": resumeCsrf }, body });
-    status.textContent = "Resume uploaded.";
-    form.reset();
-    document.querySelector("#resume-upload-prompt").hidden = true;
-    document.querySelector("#resume-canvas").hidden = false;
-    document.querySelector(".resume-stage-bar a").hidden = false;
-    resumeLoaded = false;
-    await loadResume();
-  } catch (error) {
-    status.textContent = error.message || "Upload failed. Try again.";
-  } finally {
-    button.disabled = false;
-  }
-});
-
 async function sendResumeChat(question) {
-  const value = question.trim().slice(0, 500);
-  if (!value) return;
-  resumeMessage(value, "user");
-  document.querySelector("#resume-chat-input").value = "";
-  const button = document.querySelector("#resume-chat-form button");
-  button.disabled = true;
+  if (resumeBusy || !resumeLines.length || !question.trim()) return;
+  const message = question.trim().slice(0, 1000); resumeMessage(message, 'user'); resumeEl('resume-chat-input').value = '';
+  resumeLock(true);
+  const pending = resumeMessage('Thinking through your resume…'); pending.classList.add('pending');
+  const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 45000);
   try {
-    const data = await resumeApi("/api/resume/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-CSRF-Token": resumeCsrf },
-      body: JSON.stringify({ message: value, draft: currentDraft() }),
-    });
-    const usedGemini = data.source === "gemini" || data.ai === true;
-    resumeMessage(data.reply, "advisor", data.suggestion, usedGemini);
-    if (data.note) resumeMessage(`${data.note} I used the local evidence summary instead.`, "advisor");
-  } catch (error) {
-    resumeMessage(error.message || "Could not answer that. Try again.", "advisor");
-  } finally {
-    button.disabled = false;
-  }
+    const data = await (await resumeApi('/api/resume/editor/chat', {...resumePost({message, lines: resumeLines}), signal: controller.signal})).json();
+    resumeMessage(data.reply, 'advisor', data.edits, data.model);
+  } catch (error) { resumeMessage(error.name === 'AbortError' ? 'The reply timed out. Please try again.' : error.message); }
+  finally { pending.remove(); clearTimeout(timeout); resumeLock(false); }
 }
-
-document.querySelector("#resume-chat-form").addEventListener("submit", (event) => {
-  event.preventDefault();
-  sendResumeChat(document.querySelector("#resume-chat-input").value);
+resumeEl('resume-chat-form').addEventListener('submit', event => { event.preventDefault(); sendResumeChat(resumeEl('resume-chat-input').value); });
+document.querySelectorAll('[data-resume-prompt]').forEach(el => el.addEventListener('click', () => sendResumeChat(el.dataset.resumePrompt)));
+document.querySelectorAll('[data-resume-view]').forEach(el => el.addEventListener('click', () => { if (!originalPdf) return; resumeView = el.dataset.resumeView; renderResumeView(); }));
+resumeEl('resume-line').addEventListener('change', () => { resumeEl('resume-line-text').value = resumeLines[Number(resumeEl('resume-line').value)]; });
+resumeEl('resume-line-save').addEventListener('click', () => { const i = Number(resumeEl('resume-line').value); replaceLine(i, resumeLines[i], resumeEl('resume-line-text').value, resumeRevision); });
+resumeEl('resume-line-ask').addEventListener('click', () => sendResumeChat(`Help me improve line ${Number(resumeEl('resume-line').value) + 1}. Ask for any details you need before rewriting it.`));
+resumeEl('resume-undo').addEventListener('click', async () => {
+  if (resumeBusy || !undoEdits.length) return; resumeLock(true);
+  try { const previous = undoEdits.at(-1); const urls = await buildPdfs(previous); resumeLines = undoEdits.pop(); commitPdf(urls); }
+  catch (error) { resumeMessage(error.message); }
+  finally { resumeLock(false); }
 });
-document.querySelectorAll("[data-resume-prompt]").forEach((button) => {
-  button.addEventListener("click", () => sendResumeChat(button.dataset.resumePrompt));
-});
-document.querySelectorAll("[data-resume-view]").forEach((button) => {
-  button.addEventListener("click", () => setResumeView(button.dataset.resumeView));
-});
-document.querySelector("#download-draft").addEventListener("click", () => {
-  draftResumeText = currentDraft();
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(new Blob([draftResumeText], { type: "text/plain;charset=utf-8" }));
-  link.download = `${(resumePreview?.filename || "resume").replace(/\.[^.]+$/, "")}-draft.txt`;
-  link.click();
-  URL.revokeObjectURL(link.href);
-});
-document.querySelector("#render-latex").addEventListener("click", async (event) => {
-  const button = event.currentTarget;
-  if (activeResumeView === "draft") {
-    draftResumeText = currentDraft();
-    latexSource = draftToLatex(draftResumeText);
-  } else if (activeResumeView === "latex") {
-    latexSource = document.querySelector("#latex-editor").value;
-  }
-  button.disabled = true;
-  button.textContent = "Rendering…";
+resumeEl('download-draft').addEventListener('click', async () => {
+  if (!resumeLines.length) return;
   try {
-    const response = await fetch("/api/resume/render", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-CSRF-Token": resumeCsrf },
-      body: JSON.stringify({ source: latexSource }),
-    });
-    if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.error || "Could not render this LaTeX source.");
-    }
-    if (renderedPdfUrl) URL.revokeObjectURL(renderedPdfUrl);
-    renderedPdfUrl = URL.createObjectURL(await response.blob());
-    setResumeView("preview");
-  } catch (error) {
-    resumeMessage(error.message || "Could not render this LaTeX source.", "advisor");
-  } finally {
-    button.disabled = false;
-    button.textContent = "Render PDF";
-  }
+    const response = await resumeApi('/api/resume/render', {...resumePost({lines: resumeLines, changed: [], format: 'source'})});
+    const link = document.createElement('a'); link.href = URL.createObjectURL(await response.blob()); link.download = 'resume-updated.tex'; link.click();
+  } catch (error) { resumeMessage(error.message); }
 });
-
-if (location.hash === "#resume") loadResume();
+resumeEl('resume-upload-form').addEventListener('submit', async event => {
+  event.preventDefault(); if (resumeBusy) return;
+  const file = resumeEl('resume-upload-file').files[0];
+  if (!file || !/\.tex$/i.test(file.name) || !file.size || file.size > 5 * 1024 * 1024) { resumeEl('resume-upload-status').textContent = 'Choose a LaTeX .tex file under 5 MB.'; return; }
+  resumeLock(true);
+  try {
+    const form = new FormData(); form.set('resume', file); form.set('campus_id', resumeStudentId);
+    await resumeApi('/api/enroll', {method: 'POST', headers: {'X-CSRF-Token': resumeCsrf}, body: form});
+    // Clear all previous document state so old proposals cannot modify a replacement.
+    location.hash = 'resume'; location.reload();
+  } catch (error) { resumeEl('resume-upload-status').textContent = error.message; }
+  finally { resumeLock(false); }
+});
+window.addEventListener('pagehide', () => { if (draftPdf) URL.revokeObjectURL(draftPdf); if (reviewPdf) URL.revokeObjectURL(reviewPdf); });
+if (location.hash === '#resume') loadResume();

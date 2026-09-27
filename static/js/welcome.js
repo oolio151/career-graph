@@ -50,7 +50,7 @@ skipResume.addEventListener("change", () => {
   resumeInput.value = skipResume.checked ? "" : resumeInput.value;
   resumeHint.textContent = skipResume.checked
     ? "You can upload a resume later from Resume Studio."
-    : "PDF, DOCX, or TXT, up to 5 MB. Stored on this computer. When AI is enabled, extracted resume text and selected evidence are sent to Gemini.";
+    : "UTF-8 LaTeX (.tex), up to 5 MB. Stored on this computer. When AI is enabled, extracted resume text and selected evidence are sent to Gemini.";
 });
 document.querySelectorAll("[data-sample]").forEach(button => button.addEventListener("click", () => { idInput.value = button.dataset.sample; findStudent(); }));
 form.addEventListener("submit", async (event) => {

@@ -3,9 +3,6 @@ import json
 import os
 import re
 import secrets
-import shutil
-import subprocess
-import tempfile
 import xml.etree.ElementTree as ET
 import zipfile
 import zlib
@@ -23,6 +20,10 @@ from gemini import DEFAULT_MODEL, Gemini
 from python.discover_map import discover_map
 from python.connect import matches, draft_email
 from python.chat_history import read_history, write_history
+from python.resume_editor import (extract_pdf, extract_latex, apply_latex_lines, compile_latex,
+                                  latex_preview_lines,
+                                  make_latex_preview,
+                                  validate_lines, propose_edits, make_pdf, preserve_pdf)
 from gemini import GeminiError
 
 MAX_RESUME = 5 * 1024 * 1024
@@ -61,14 +62,19 @@ def gemini_skill_flags(resume_text, known_skills):
 
 def validate_resume(upload):
     if not upload or not upload.filename:
-        raise ValueError("Choose a PDF, DOCX, or TXT resume.")
+        raise ValueError("Choose a LaTeX (.tex), PDF, DOCX, or TXT resume.")
     name = secure_filename(upload.filename)
     extension = Path(name).suffix.lower()
     data = upload.read(MAX_RESUME + 1)
     if not data or len(data) > MAX_RESUME:
         raise ValueError("Choose a nonempty resume smaller than 5 MB.")
     valid = False
-    if extension == ".pdf":
+    if extension == ".tex":
+        try:
+            valid = bool(extract_latex(data).strip())
+        except ValueError:
+            raise
+    elif extension == ".pdf":
         valid = data.startswith(b"%PDF-") and b"%%EOF" in data[-2048:]
     elif extension == ".docx":
         try:
@@ -83,11 +89,13 @@ def validate_resume(upload):
         except UnicodeDecodeError:
             pass
     if not valid:
-        raise ValueError("That file does not look like a PDF, DOCX, or UTF-8 TXT resume. Please choose another file.")
+        raise ValueError("That file does not look like a LaTeX, PDF, DOCX, or UTF-8 TXT resume. Please choose another file.")
     return name, extension, data
 
 
 def resume_plain_text(extension, data):
+    if extension == ".tex":
+        return extract_latex(data)
     if extension == ".txt":
         return data.decode("utf-8")
     if extension == ".docx":
@@ -390,7 +398,7 @@ def create_app(test_config=None):
         file = resume_file(current)
         if file is None:
             return jsonify(error="Resume not found. Upload it again."), 404
-        types = {".pdf": "application/pdf", ".txt": "text/plain; charset=utf-8",
+        types = {".pdf": "application/pdf", ".tex": "text/plain; charset=utf-8", ".txt": "text/plain; charset=utf-8",
                  ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}
         return send_file(file, as_attachment=False, download_name=current["filename"], mimetype=types[current["extension"]])
 
@@ -443,39 +451,89 @@ def create_app(test_config=None):
         except ValueError as error:
             return jsonify(error=str(error)), 400
 
-    @app.post("/api/resume/render")
+    @app.get('/api/resume/editor')
+    def resume_editor_state():
+        current = state()
+        if not current:
+            return jsonify(error='Sign in to edit your resume.'), 401
+        file = resume_file(current)
+        if file is None:
+            return jsonify(error='Upload a LaTeX resume to begin.'), 404
+        try:
+            text = (extract_latex(file.read_bytes()) if current['extension'] == '.tex'
+                    else extract_pdf(file.read_bytes()) if current['extension'] == '.pdf' else None)
+            if text is None:
+                return jsonify(error='Upload a .tex file to use the LaTeX resume editor.'), 400
+            lines = validate_lines(text.splitlines())
+            return jsonify(lines=lines, filename=current['filename'])
+        except ValueError as error:
+            return jsonify(error=str(error)), 400
+
+    @app.post('/api/resume/editor/chat')
+    def resume_editor_chat():
+        current = state()
+        if not current:
+            return jsonify(error='Sign in to discuss your resume.'), 401
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            return jsonify(error='Send a question and current resume lines.'), 400
+        try:
+            lines = validate_lines(payload.get('lines'))
+            history_path = private / f"{session['upload_id']}.editor-chat.json"
+            history = read_history(history_path)
+            result = propose_edits(dataset, current['campus_id'], lines, payload.get('message'),
+                                   history, app.extensions['gemini'])
+            write_history(history_path, [*history, {'user': payload['message'],
+                'advisor': json.dumps(result, ensure_ascii=False)}])
+            return jsonify(result)
+        except ValueError as error:
+            return jsonify(error=str(error)), 400
+        except GeminiError as error:
+            return jsonify(error=str(error)), 503
+        except OSError:
+            return jsonify(error='Could not save this conversation. Please try again.'), 503
+
+    @app.post('/api/resume/render')
     def render_resume():
         current = state()
         if not current:
-            return jsonify(error="Enter your student ID and resume to continue."), 401
-        payload = request.get_json(silent=True) or {}
-        source = payload.get("source", "")
-        if not isinstance(source, str) or not source.strip() or len(source) > 50000:
-            return jsonify(error="Provide a LaTeX resume under 50,000 characters."), 400
-        if "\\documentclass" not in source or "\\begin{document}" not in source:
-            return jsonify(error="The LaTeX draft needs a document class and document body."), 400
-        blocked = (r"\write18", r"\openin", r"\openout", r"\read", r"\include{", r"\input{")
-        if any(command in source.lower() for command in blocked):
-            return jsonify(error="That LaTeX source uses a command disabled by the safe renderer."), 400
-        tectonic = shutil.which("tectonic")
-        if not tectonic:
-            return jsonify(error="The LaTeX renderer is not installed on this server."), 503
-        with tempfile.TemporaryDirectory(prefix="careergraph-latex-") as folder:
-            tex = Path(folder) / "resume.tex"
-            tex.write_text(source, encoding="utf-8")
-            try:
-                completed = subprocess.run(
-                    [tectonic, "--untrusted", "--keep-logs", "--outdir", folder, str(tex)],
-                    cwd=folder, capture_output=True, text=True, timeout=30, check=False,
-                )
-            except subprocess.TimeoutExpired:
-                return jsonify(error="LaTeX rendering took too long."), 504
-            pdf = Path(folder) / "resume.pdf"
-            if completed.returncode != 0 or not pdf.exists():
-                detail = (completed.stderr or completed.stdout).strip().splitlines()
-                return jsonify(error="LaTeX could not render: " + (detail[-1] if detail else "check the source.")), 400
-            return send_file(io.BytesIO(pdf.read_bytes()), mimetype="application/pdf",
-                             as_attachment=False, download_name="resume-draft.pdf")
+            return jsonify(error='Sign in to preview your resume.'), 401
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            return jsonify(error='Send resume lines.'), 400
+        try:
+            lines = validate_lines(payload.get('lines'))
+            changed = payload.get('changed', [])
+            if not isinstance(changed, list) or any(type(i) is not int or not 0 <= i < len(lines) for i in changed):
+                raise ValueError('Invalid changed line references.')
+            file = resume_file(current)
+            original = file.read_bytes() if file and current.get('extension') == '.pdf' else None
+            if file and current.get('extension') == '.tex':
+                source = apply_latex_lines(lines)
+                if payload.get('format', 'pdf') == 'source':
+                    return send_file(io.BytesIO(source), mimetype='text/plain; charset=utf-8',
+                                     download_name='resume-draft.tex', as_attachment=False)
+                try:
+                    document = compile_latex(source)
+                except RuntimeError as error:
+                    # Keep the visual workflow usable when a native TeX toolchain is absent.
+                    document = make_latex_preview(lines, changed)
+                    response = send_file(document, mimetype='application/pdf',
+                                         download_name='resume-preview.pdf', as_attachment=False)
+                    response.headers['X-LaTeX-Preview'] = 'approximate'
+                    response.headers['X-LaTeX-Preview-Note'] = str(error)[:240]
+                    return response
+                return send_file(document, mimetype='application/pdf',
+                                 download_name='resume-draft.pdf', as_attachment=False)
+            if original:
+                original_lines = validate_lines(extract_pdf(original).splitlines())
+                document = preserve_pdf(original, original_lines, lines)
+            else:
+                document = make_pdf(lines, changed)
+            return send_file(document, mimetype='application/pdf',
+                             download_name='resume-draft.pdf', as_attachment=False)
+        except ValueError as error:
+            return jsonify(error=str(error)), 400
 
     @app.post("/api/session/clear")
     def clear():

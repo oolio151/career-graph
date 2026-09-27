@@ -54,18 +54,29 @@ without reciting the student's record. Specific dataset claims must use the supp
 resume rewrites must preserve supported experience. Synthetic-data reminders accompany dataset
 claims rather than every conversation turn.
 
+**LaTeX resume workspace.** Upload a UTF-8 `.tex` resume (up to 5 MB). The advisor can ask
+follow-up questions and propose replacements for exact numbered source lines. Accept or
+dismiss each proposal, make a precise manual edit, and undo accepted changes. Updated and
+comparison source views preserve the original document class, packages, and formatting;
+download the revised `.tex` and compile it with the same toolchain as the original.
+
+**LaTeX preview.** If `tectonic` or `pdflatex` is installed, each draft is compiled in an
+isolated temporary directory with shell escape disabled and a short timeout. Set
+`LATEX_COMPILER` to an explicit compiler path when needed. Without a compiler, the workspace
+falls back to showing the source so editing and downloading still work.
+
 **Conversation memory.** Resume chat includes up to eight previous successful Gemini
-exchanges, capped at 12,000 characters, alongside the latest profile and resume context.
+exchanges, capped at 12,000 characters, alongside the current resume lines and profile context.
 History is stored server-side with the session's uploaded files and survives page refreshes.
-Replacing the resume or clearing the student session deletes that history.
+Replacing the resume or clearing the student session deletes that history. The LaTeX editor
+reports provider errors directly instead of offering unrelated deterministic edits.
 
 **Fallback.** If `GEMINI_API_KEY` is unset, or the API is unreachable, rate-limited, or returns
 nothing usable, `coach_resume` falls back to the deterministic on-device rules and sets a `note`
 field explaining why. The demo degrades instead of breaking. Responses carry `source`
 (`gemini` or `local`), `model`, and `grounded_in` so the UI can label the source honestly.
 
-Gemini is called over `urllib` from the standard library in `gemini.py`, so the project keeps
-its two dependencies. Set `GEMINI_MODEL` to override the default `gemini-3.5-flash-lite` model.
+Gemini is called over `urllib` from the standard library in `gemini.py`, without a separate provider SDK. PDF extraction and generation use pypdf and ReportLab. Set `GEMINI_MODEL` to override the default `gemini-3.5-flash-lite` model.
 
 ## Where to build
 

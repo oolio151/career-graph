@@ -234,18 +234,15 @@ class AppTests(unittest.TestCase):
         self.app.extensions["gemini"] = Gemini("")
         self.assertEqual(self.client.get("/api/resume/chat/config").json["engine"], "local")
 
-    def test_latex_renderer_validates_source(self):
+    def test_pdf_renderer_validates_lines(self):
         self.enroll()
         headers = {"X-CSRF-Token": self.csrf}
-        missing_document = self.client.post("/api/resume/render", json={"source": "hello"}, headers=headers)
-        self.assertEqual(missing_document.status_code, 400)
-        unsafe = self.client.post(
-            "/api/resume/render",
-            json={"source": r"\documentclass{article}\begin{document}\input{secret}\end{document}"},
-            headers=headers,
-        )
-        self.assertEqual(unsafe.status_code, 400)
-        self.assertIn("disabled", unsafe.json["error"])
+        for payload in ({"lines": []}, {"lines": ["x" * 20001]}, {"lines": ["Name"], "changed": [-1]}):
+            self.assertEqual(self.client.post('/api/resume/render', json=payload, headers=headers).status_code, 400)
+        response = self.client.post('/api/resume/render', json={'lines': ['Example Student', 'Experience', 'Built an application.']}, headers=headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data.startswith(b'%PDF'))
+        response.close()
 
 
 class CalculationTests(unittest.TestCase):

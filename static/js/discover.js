@@ -386,8 +386,8 @@ document.querySelector("#replace-resume-form").addEventListener("submit", async 
     status.textContent = "Wait for your profile to load, then try again.";
     return;
   }
-  if (!file || !file.size || file.size > 5 * 1024 * 1024) {
-    status.textContent = "Choose a nonempty resume smaller than 5 MB.";
+  if (!file || !/\.tex$/i.test(file.name) || !file.size || file.size > 5 * 1024 * 1024) {
+    status.textContent = "Choose a nonempty LaTeX .tex file smaller than 5 MB.";
     return;
   }
   const body = new FormData(event.currentTarget);
