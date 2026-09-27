@@ -31,7 +31,7 @@ async function findStudent() {
     const student = await response.json();
     if (version !== lookup) return;
     if (!response.ok) throw new Error(student.error);
-    const title = document.createElement("strong"); title.textContent = student.major;
+    const title = document.createElement("strong"); title.textContent = `${student.full_name || student.campus_id} · ${student.major}`;
     const summary = document.createElement("p");
     summary.textContent = `${student.class_level} · ${student.track} · GPA ${student.cumulative_gpa ?? "not available yet"}`;
     const detail = document.createElement("p");

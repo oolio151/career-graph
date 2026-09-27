@@ -275,7 +275,9 @@ async function sendResumeChat(question) {
       headers: { "Content-Type": "application/json", "X-CSRF-Token": resumeCsrf },
       body: JSON.stringify({ message: value, draft: currentDraft() }),
     });
-    resumeMessage(data.reply, "advisor", data.suggestion, data.ai);
+    const usedGemini = data.source === "gemini" || data.ai === true;
+    resumeMessage(data.reply, "advisor", data.suggestion, usedGemini);
+    if (data.note) resumeMessage(`${data.note} I used the local evidence summary instead.`, "advisor");
   } catch (error) {
     resumeMessage(error.message || "Could not answer that. Try again.", "advisor");
   } finally {

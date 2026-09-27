@@ -37,7 +37,8 @@ function joined(items) {
 function renderProfile(data) {
   studentProfile = data.student;
   const profile = studentProfile;
-  document.querySelector("#profile-id").textContent = profile.campus_id;
+  document.querySelector("#profile-id").textContent = profile.full_name && profile.full_name !== profile.campus_id
+    ? `${profile.full_name} · ${profile.campus_id}` : profile.campus_id;
   document.querySelector("#profile-major").textContent = profile.major;
   document.querySelector("#profile-summary").textContent =
     `${profile.class_level} · ${profile.track} · GPA ${profile.cumulative_gpa ?? "not available yet"} · ${profile.credits_earned} of ${profile.credits_required} credits`;

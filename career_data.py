@@ -3,12 +3,46 @@ import csv
 from collections import Counter, defaultdict
 from pathlib import Path
 
+from gemini import TRUNCATION_NOTICE, GeminiError
+
 NA = "Not Applicable"
 EMPLOYED = {"Employed Full-Time", "Employed Part-Time"}
+RESUME_PROMPT_LIMIT = 6000
+SUGGESTION_MARKER = "SUGGESTED RESUME LINE:"
+
+SYSTEM_INSTRUCTION = """You are a resume advisor for a university career tool.
+
+You answer using ONLY the FACTS block you are given. Every claim must trace back to a \
+number or record in that block. Follow these rules:
+
+- Quote the actual figures and names from the block. Say "212 of 1,480" or "Data & \
+Analytics", never a vague paraphrase.
+- Never invent employers, salaries, courses, skills, or outcomes that are not in the block.
+- If the block does not answer part of the question, say so plainly and name what the \
+block does cover. Do not fill the gap with general career advice presented as fact.
+- The block is SYNTHETIC data from a simulation. It does not describe real students, \
+graduates, or employers. Never imply a real person or a hiring outcome.
+- You are not predicting a salary, an offer, or a job. Historical patterns are not odds.
+- Keep it to 3-5 short sentences. Plain text only: no markdown, no bullet glyphs, no \
+headings, no bold.
+- End the reply with one sentence stating that the records are synthetic and are not a \
+prediction about hiring.
+- If a specific resume line would help, end with a final line exactly formatted as \
+"SUGGESTED RESUME LINE: <one line the student could paste>". Omit that line only if \
+you have nothing concrete to suggest."""
 
 
 def percentage(count, total):
     return round(100 * count / total, 1) if total else 0
+
+
+def person_name(record):
+    """Use dataset names when available; older samples still work with IDs."""
+    def clean(value):
+        return value.strip() if value and value.strip() != NA else ""
+    return (clean(record.get("full_name"))
+            or " ".join(filter(None, (clean(record.get("first_name")), clean(record.get("last_name")))))
+            or record["campus_id"])
 
 
 def internship_band(count):
@@ -46,6 +80,7 @@ class CareerData:
                 "expected_graduation_term", "internship_count", "credential_count",
                 "engagement_activity_count")
         result = {k: None if student[k] == NA else student[k] for k in keys}
+        result["full_name"] = person_name(student)
         courses = self.transcripts[campus_id]
         passed = {r["course_id"] for r in courses if r["grade"] in {"A", "B", "C", "D"}}
         skills = set()
@@ -86,7 +121,7 @@ class CareerData:
                 if len(jobs) > 1:
                     next_roles[jobs[1]["job_title"]] += 1
                     if len(examples) < 3:
-                        examples.append({"campus_id": alum["campus_id"], "graduation_year": alum["graduation_year"], "jobs": [{k: j[k] for k in ("job_title", "employer", "start_date", "end_date", "change_type")} for j in jobs]})
+                        examples.append({"campus_id": alum["campus_id"], "full_name": person_name(alum), "graduation_year": alum["graduation_year"], "jobs": [{k: j[k] for k in ("job_title", "employer", "start_date", "end_date", "change_type")} for j in jobs]})
             progressed = sum(next_roles.values())
             fields.append({"family": family, "count": len(members), "percent": percentage(len(members), len(employed)),
                 "titles": [t for t, _ in first_titles.most_common(3)],
@@ -102,12 +137,119 @@ class CareerData:
             "fields": fields, "filters": filters, "small_sample": len(cohort) < 20,
             "sources": ["alumni.csv", "employment_history.csv"], "as_of": "2026-09-15"}
 
-    def coach_resume(self, campus_id, resume_text, message):
+    def skill_gaps(self, campus_id):
+        """Skills the top alumni first-job families want that this student's courses miss."""
+        covered = set(self.profile(campus_id)["course_skills"])
+        paths = self.discover(campus_id, {})
+        gaps = {}
+        for field in paths["fields"][:3]:
+            missing = [skill for skill in field["skills"] if skill not in covered]
+            if missing:
+                gaps[field["family"]] = missing
+        return gaps
+
+    def resume_context(self, campus_id, resume_text):
+        """The only facts the model is allowed to reason over, as a compact text brief."""
+        student = self.profile(campus_id)
+        paths = self.discover(campus_id, {})
+        covered = set(student["course_skills"])
+        lines = [
+            "FACTS BLOCK (synthetic track dataset, snapshot 2026-09-15)",
+            "",
+            "STUDENT RECORD",
+            f"Student name: {student['full_name']}",
+            f"Record ID: {student['campus_id']}",
+            f"Major: {student['major']} | Track: {student['track']} | Level: {student['class_level']}",
+            f"Cumulative GPA: {student['cumulative_gpa'] or 'not available yet'} | "
+            f"Credits: {student['credits_earned']} of {student['credits_required']}",
+            f"Expected graduation: {student['expected_graduation_term']} | "
+            f"Internships/co-ops: {student['internship_count']} | "
+            f"Certifications: {student['credential_count']} | "
+            f"Other activities: {student['engagement_activity_count']}",
+        ]
+        if student["experiences"]:
+            lines.append("Experience on record:")
+            for item in student["experiences"][:8]:
+                lines.append(f"  - {item['experience_name']} ({item['experience_type']}) at "
+                             f"{item['organization']}, {item['term']}, outcome: {item['outcome']}")
+        else:
+            lines.append("Experience on record: none.")
+        lines += [
+            "",
+            f"SKILLS COVERED BY PASSED COURSES ({len(student['course_skills'])}): "
+            + (", ".join(student["course_skills"]) or "none yet"),
+            "",
+            f"ALUMNI COMPARISON ({paths['major']} bachelor's graduates)",
+            f"Cohort: {paths['cohort_count']} graduates. "
+            f"{paths['employed_count']} reported a first job. "
+            f"{paths['unknown_count']} outcomes are unknown (No Response), which is not unemployment.",
+        ]
+        for outcome in paths["outcomes"][:4]:
+            lines.append(f"  - {outcome['name']}: {outcome['count']} ({outcome['percent']}%)")
+        for field in paths["fields"][:3]:
+            lines.append(
+                f"  - {field['family']}: {field['count']} of {paths['employed_count']} "
+                f"employed graduates ({field['percent']}%). Common titles: {', '.join(field['titles'])}."
+            )
+            lines.append(f"    Skills those first jobs asked for: {', '.join(field['skills'])}")
+            missing = [skill for skill in field["skills"] if skill not in covered]
+            if missing:
+                lines.append(f"    Of those, NOT covered by this student's passed courses: "
+                             f"{', '.join(missing)}")
+            else:
+                lines.append("    All of those are covered by this student's passed courses.")
+            if field["with_next_job"]:
+                top = "; ".join(f"{r['title']} ({r['percent']}%)" for r in field["next_roles"][:3])
+                lines.append(f"    Second jobs recorded for {field['with_next_job']} of "
+                             f"{field['count']} people: {top}")
+        lines += [
+            "",
+            "STUDENT RESUME TEXT (words extracted from the uploaded file, may be incomplete "
+            "if the file is a scanned PDF):",
+            (resume_text or "").strip()[:RESUME_PROMPT_LIMIT] or "(no readable text)",
+            "",
+            "END OF FACTS BLOCK",
+        ]
+        return "\n".join(lines)
+
+    def coach_resume(self, campus_id, resume_text, message, gemini=None):
         question = (message or "").strip()
         if not question:
             raise ValueError("Type a question first.")
         if len(question) > 500:
             raise ValueError("Keep the question under 500 characters.")
+        fallback = self._local_coach(campus_id, resume_text)
+        if gemini is not None and gemini.enabled:
+            prompt = (f"{self.resume_context(campus_id, resume_text)}\n\n"
+                      f"STUDENT QUESTION: {question}")
+            try:
+                reply, suggestion = self._split_suggestion(gemini.generate(prompt, SYSTEM_INSTRUCTION))
+            except GeminiError as error:
+                fallback["note"] = str(error)
+                return fallback
+            return {"reply": reply, "suggestion": suggestion, "source": "gemini",
+                    "model": gemini.model, "grounded_in": ["students_current.csv", "alumni.csv",
+                                                          "employment_history.csv", "uploaded resume"]}
+        return fallback
+
+    def _split_suggestion(self, text):
+        """Pull the optional pasteable line out of the model reply.
+
+        A truncation notice may land on either side of the marker depending on
+        where the cut happened; it always belongs with the reply, never in the
+        line the student pastes into their resume.
+        """
+        reply, marker, suggestion = text.rpartition(SUGGESTION_MARKER)
+        if not marker:
+            return text.strip(), None
+        suggestion = suggestion.strip().strip('"')
+        if TRUNCATION_NOTICE in suggestion:
+            suggestion = suggestion.replace(TRUNCATION_NOTICE, "").strip()
+            reply = f"{reply.strip()}\n\n{TRUNCATION_NOTICE}"
+        return reply.strip(), suggestion or None
+
+    def _local_coach(self, campus_id, resume_text):
+        """Deterministic answers, used when Gemini is off or unreachable."""
         student = self.profile(campus_id)
         paths = self.discover(campus_id, {})
         field = paths["fields"][0] if paths["fields"] else None
@@ -134,20 +276,5 @@ class CareerData:
         else:
             suggestion = None
         reply = " ".join([lead, detail, "This uses synthetic alumni records on this computer, not an outside model."])
-        evidence = {
-            "student": {"major": student["major"], "track": student["track"],
-                        "class_level": student["class_level"], "course_skills": student["course_skills"],
-                        "recorded_experiences": student["experiences"]},
-            "closest_common_path": ({"job_family": field["family"], "alumni_count": field["count"],
-                "share_of_employed_alumni_percent": field["percent"], "common_role_skills": field["skills"],
-                "common_job_search_routes": field["routes"]} if field else None),
-            "comparison": {"employed_alumni_count": paths["employed_count"],
-                "skills_not_found_in_resume_text": missing,
-                "recorded_experience_not_found_in_resume_text": experience},
-            "limitations": ["All alumni and outcome records are synthetic.",
-                "Course skill tags indicate exposure, not verified proficiency.",
-                "A missing phrase may reflect wording rather than a missing ability."],
-            "sources": ["students_current.csv", "transcripts.csv", "course_catalog.csv",
-                        "student_experience.csv", "alumni.csv", "employment_history.csv"],
-        }
-        return {"reply": reply, "suggestion": suggestion, "evidence": evidence}
+        return {"reply": reply, "suggestion": suggestion, "source": "local",
+                "model": "on-device rules", "grounded_in": ["alumni.csv", "employment_history.csv"]}

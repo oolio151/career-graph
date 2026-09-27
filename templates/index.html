@@ -61,7 +61,7 @@
   <nav id="sidebar" aria-label="Main navigation">
     <button class="nav-item active" data-view="discover" aria-current="page">gritGraph</button>
     <button class="nav-item" data-view="resume">Resume</button>
-    <button class="nav-item" data-view="engagement">Activities</button>
+    <button class="nav-item" data-view="connect">Connect</button>
   </nav>
   <button class="icon-button" id="about-button" aria-label="About this demo"><svg class="icon" aria-hidden="true"><use href="#i-info" /></svg></button>
 </header>
@@ -72,10 +72,7 @@
     </section>
     {% include "discover.html" %}
     {% include "resume.html" %}
-    <div class="view" id="view-engagement" hidden>
-      <div class="engagement-grid" id="engagement-grid"></div>
-      <p class="context-note">Example activities. Save the ones you want to try.</p>
-    </div>
+    {% include "connect.html" %}
     <footer class="page-footer"><span class="footer-identity"><span class="footer-brand">grit</span><span class="school-logo"><img src="{{ url_for('static', filename='images/umbc.png') }}" alt="University of Maryland, Baltimore County" height="40"></span></span><span>Synthetic data · Sept 2026</span><a href="https://github.com/jasonpaluck/hackumbc-2026" target="_blank" rel="noopener noreferrer">Made for HackUMBC 2026</a></footer>
   </main>
 </div>
@@ -97,8 +94,7 @@
     open jobs or predictions.
   </p>
   <p>
-    The activities are a
-    separate demo. They are not calculated from those records. The dataset does
+    Connect matches alumni by recorded background and career interests and drafts introductions using Gemini. Contact details are synthetic and drafts are not sent. The dataset does
     not describe real UMBC students or employers.
   </p>
   <a

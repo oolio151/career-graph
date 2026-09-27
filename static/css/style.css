@@ -1771,3 +1771,27 @@ body:has(#view-discover:not([hidden])) .site-header { margin-bottom:0; }
   #alumni-map .alumni-node, .alumni-edges path, .you-card .cohort-filters label { transition:none; }
   .discover-more details::details-content { transition:none; }
 }
+
+/* Alumni connections */
+.connect-positions { display:flex; flex-wrap:wrap; gap:10px; max-height:220px; overflow-y:auto; margin:18px 0; }
+.connect-positions label { display:flex; gap:8px; align-items:center; background:#f4eee5; padding:9px 12px; border-radius:10px; font-size:14px; }
+.connect-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:24px; margin-top:24px; }
+.connect-card { min-width:0; }
+.connect-card table { margin:18px 0; }
+.connect-contact { overflow-wrap:anywhere; margin:18px 0; font-weight:600; }
+.connect-draft { width:100%; height:300px; overflow-y:auto; resize:vertical; margin:16px 0; padding:16px; border:2px solid var(--line); border-radius:12px; font-family:inherit; font-size:14px; line-height:1.7; }
+#connect-email { margin:auto; padding:0; width:min(760px,calc(100vw - 40px)); max-width:760px; max-height:90vh; overflow-y:auto; background:#fff; box-shadow:0 24px 90px #0003; }
+#connect-email::backdrop { background:#17171780; backdrop-filter:blur(4px); }
+.email-header { display:flex; justify-content:space-between; align-items:center; padding:24px 30px; background:var(--paper); border-bottom:1px solid var(--line); }
+#connect-email h2 { margin:5px 0 0; font-size:23px; }
+.email-envelope { padding:0 30px; }
+.email-row { display:flex; align-items:center; gap:18px; padding:17px 0; border-bottom:1px solid var(--line); font-size:14px; }
+.email-row > :first-child { width:64px; flex-shrink:0; color:var(--muted); }
+#connect-email-to { overflow-wrap:anywhere; }
+#connect-email-subject { width:100%; min-width:0; border:0; padding:7px; background:transparent; font:inherit; font-weight:600; color:var(--ink); }
+.email-content { padding:20px 30px 0; }
+.email-content > label { font-size:12px; color:var(--muted); }
+#connect-email-body { display:block; width:100%; height:32vh; min-height:220px; resize:vertical; overflow-y:auto; border:0; padding:12px 0; background:#fff; color:var(--ink); font-family:inherit; font-size:15px; line-height:1.85; }
+.email-footer { padding:16px 30px 24px; border-top:1px solid var(--line); }
+#connect-email-status { font-size:13px; margin:0 0 12px; }
+#connect-email .email-note { font-size:12px; color:var(--muted); margin:14px 0 0; }

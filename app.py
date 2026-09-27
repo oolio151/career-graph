@@ -18,8 +18,11 @@ from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.utils import secure_filename
 
 from career_data import CareerData
-from gemini_advisor import GeminiAdvisor, GeminiError
+from dotenv import load_dotenv
+from gemini import DEFAULT_MODEL, Gemini
 from python.discover_map import discover_map
+from python.connect import matches, draft_email
+from gemini import GeminiError
 
 MAX_RESUME = 5 * 1024 * 1024
 GEMINI_MODEL = "gemini-2.5-flash"
@@ -158,10 +161,13 @@ def _pdf_text(data):
 
 
 def create_app(test_config=None):
+    load_dotenv(Path(__file__).resolve().parent / ".env")
     app = Flask(__name__, instance_relative_config=True)
     app.config.update(MAX_CONTENT_LENGTH=MAX_RESUME + 65536, SESSION_COOKIE_HTTPONLY=True,
                       SESSION_COOKIE_SAMESITE="Lax", DATA_DIR=Path(app.root_path) / "data",
-                      UPLOAD_DIR=Path(app.instance_path) / "resumes")
+                      UPLOAD_DIR=Path(app.instance_path) / "resumes",
+                      GEMINI_API_KEY=os.environ.get("GEMINI_API_KEY", ""),
+                      GEMINI_MODEL=os.environ.get("GEMINI_MODEL", DEFAULT_MODEL))
     if test_config:
         app.config.update(test_config)
     private = Path(app.config["UPLOAD_DIR"])
@@ -178,10 +184,7 @@ def create_app(test_config=None):
         app.config["SECRET_KEY"] = key_file.read_text()
     dataset = CareerData(app.config["DATA_DIR"])
     app.extensions["career_data"] = dataset
-    api_key = os.environ.get("GEMINI_API_KEY", "").strip()
-    app.extensions["gemini_advisor"] = (GeminiAdvisor(
-        api_key, os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
-    ) if api_key and not app.config.get("TESTING") else None)
+    app.extensions["gemini"] = Gemini(app.config["GEMINI_API_KEY"], app.config["GEMINI_MODEL"])
 
     def state():
         token = session.get("upload_id", "")
@@ -238,7 +241,16 @@ def create_app(test_config=None):
 
     @app.get("/api/health")
     def health():
-        return {"status": "ok", "app": "career-graph"}
+        gemini = app.extensions["gemini"]
+        return {"status": "ok", "app": "career-graph",
+                "advisor": {"engine": "gemini" if gemini.enabled else "on-device rules",
+                            "model": gemini.model if gemini.enabled else None}}
+
+    @app.get("/api/resume/chat/config")
+    def resume_chat_config():
+        gemini = app.extensions["gemini"]
+        return jsonify(engine="gemini" if gemini.enabled else "local",
+                       model=gemini.model if gemini.enabled else "on-device rules")
 
     @app.get("/api/students/<campus_id>")
     def student(campus_id):
@@ -298,6 +310,34 @@ def create_app(test_config=None):
             return jsonify(discover_map(dataset, current["campus_id"], filters))
         except ValueError as error:
             return jsonify(error=str(error)), 400
+
+    @app.get("/api/connect")
+    def connect_matches():
+        current = state()
+        if not current:
+            return jsonify(error="Sign in to find alumni."), 401
+        try:
+            return jsonify(matches(dataset, current['campus_id'], request.args.getlist('position')))
+        except ValueError as error:
+            return jsonify(error=str(error)), 400
+
+    @app.post("/api/connect/draft")
+    def connect_draft():
+        current = state()
+        if not current:
+            return jsonify(error="Sign in to draft an introduction."), 401
+        payload = request.get_json(silent=True)
+        if (not isinstance(payload, dict) or not isinstance(payload.get('alumni_id'), str)
+                or not isinstance(payload.get('positions', []), list)
+                or not all(isinstance(p, str) for p in payload.get('positions', []))):
+            return jsonify(error="Choose an alumnus and valid positions."), 400
+        try:
+            return jsonify(draft_email(dataset, current['campus_id'], payload['alumni_id'],
+                                       payload.get('positions', []), app.extensions['gemini']))
+        except ValueError as error:
+            return jsonify(error=str(error)), 400
+        except GeminiError as error:
+            return jsonify(error=str(error)), 503
 
     @app.get("/api/resume/skills")
     def resume_skills():
@@ -375,20 +415,12 @@ def create_app(test_config=None):
             return jsonify(error="Resume not found. Upload it again."), 404
         message = request.get_json(silent=True) or {}
         try:
-            text = resume_plain_text(current["extension"], file.read_bytes())[:20000]
-            result = dataset.coach_resume(current["campus_id"], text, message.get("message", ""))
-            advisor = app.extensions["gemini_advisor"]
-            if advisor:
-                try:
-                    result["reply"] = advisor.answer(message.get("message", ""), text, result["evidence"])
-                    result["ai"] = True
-                except GeminiError:
-                    result["reply"] += " Gemini was unavailable, so I used the local evidence summary instead."
-                    result["ai"] = False
-            else:
-                result["ai"] = False
-            result.pop("evidence", None)
-            return jsonify(result)
+            draft = message.get("draft")
+            if draft is not None and not isinstance(draft, str):
+                return jsonify(error="The resume draft must be text."), 400
+            text = (draft if draft is not None else resume_plain_text(current["extension"], file.read_bytes()))[:20000]
+            return jsonify(dataset.coach_resume(current["campus_id"], text, message.get("message", ""),
+                                                app.extensions["gemini"]))
         except ValueError as error:
             return jsonify(error=str(error)), 400
 
