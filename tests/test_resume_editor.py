@@ -109,6 +109,28 @@ class EditorTests(unittest.TestCase):
         with self.assertRaises(GeminiError):
             propose_edits(dataset, 'id', lines, 'Rewrite line 2', [], model)
 
+    def test_proposals_recover_unique_line_and_whitespace_drift(self):
+        dataset = Mock()
+        dataset.resume_context.return_value = 'Context'
+        model = Mock(enabled=True, model='test')
+        lines = [r'\begin{itemize}', r'  \item Built a website', r'\end{itemize}']
+        for number, before in [(1, lines[1]), ('2', lines[1]), (2, lines[1].strip()), (99, lines[1])]:
+            with self.subTest(number=number, before=before):
+                model.generate.return_value = json.dumps({'reply': 'A clearer verb.', 'edits': [
+                    {'line': number, 'before': before, 'after': r'  \item Developed a website', 'reason': 'Clarity'}]})
+                edit = propose_edits(dataset, 'id', lines, 'Improve wording', [], model)['edits'][0]
+                self.assertEqual(edit['line'], 2)
+                self.assertEqual(edit['before'], lines[1])
+                self.assertEqual(edit['after'], r'  \item Developed a website')
+
+    def test_edit_matching_rejects_ambiguous_or_changed_content(self):
+        lines = ['Header', r'  \item Example', r'  \item Example', '']
+        for number, before in [(1, r'\item Example'), (1, ''), (2, r'\textbf{Example}'),
+                               (True, 'Header'), (2, '\\item Example\nOther line')]:
+            with self.subTest(number=number, before=before), self.assertRaises(ValueError):
+                resume_editor._match_edit_line(lines, number, before)
+        self.assertEqual(resume_editor._match_edit_line(lines, 2, lines[1]), 2)
+
     def test_pdf_session_chat_and_followup(self):
         with tempfile.TemporaryDirectory() as temp:
             app = create_app({'TESTING': True, 'SECRET_KEY': 'test', 'UPLOAD_DIR': Path(temp), 'GEMINI_API_KEY': ''})

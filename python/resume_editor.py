@@ -127,6 +127,25 @@ def validate_lines(lines):
     return lines
 
 
+def _match_edit_line(lines, number, before):
+    """Recover numbering/edge-whitespace drift without fuzzy matching LaTeX content."""
+    if isinstance(number, str) and number.isascii() and number.isdecimal():
+        number = int(number)
+    if type(number) is not int or not isinstance(before, str):
+        raise ValueError()
+    if 1 <= number <= len(lines) and before == lines[number - 1]:
+        return number
+    # Never relocate blank lines or guess between repeated source lines.
+    if not before.strip():
+        raise ValueError()
+    matches = [i + 1 for i, line in enumerate(lines) if line == before]
+    if not matches:
+        matches = [i + 1 for i, line in enumerate(lines) if line.strip() == before.strip()]
+    if len(matches) != 1:
+        raise ValueError()
+    return matches[0]
+
+
 def propose_edits(dataset, campus_id, lines, question, history, gemini, target_role=''):
     validate_lines(lines)
     if not isinstance(question, str) or not question.strip() or len(question) > 1000:
@@ -153,6 +172,9 @@ copy synthetic student or alumni achievements into an actual resume. Do not use 
 SUGGESTED RESUME LINE marker. The numbered current_lines are the authoritative current draft.
 Each edit replaces exactly one complete line; before must match it exactly. You can replace
 a line with multiple newline-separated lines to expand it, or an empty string to remove it.
+Copy line numbers and before text from current_lines, not recent_conversation. Preserve
+indentation and correctly JSON-escape LaTeX backslashes. Never combine multiple source lines
+in before, even when they form one sentence or bullet.
 Never suggest a new name or contact details unless explicitly requested. No edits are applied
 until the student approves them. Previous proposals in history are not proof of acceptance.
 '''
@@ -167,12 +189,13 @@ until the student approves them. Previous proposals in history are not proof of 
             raise ValueError()
         seen = set()
         for edit in edits:
-            number = edit['line']
-            if (type(number) is not int or not 1 <= number <= len(lines) or number in seen
-                    or edit['before'] != lines[number - 1]
+            number = _match_edit_line(lines, edit['line'], edit['before'])
+            if (number in seen
                     or not isinstance(edit['after'], str) or len(edit['after']) > 2000
                     or not isinstance(edit['reason'], str) or len(edit['reason']) > 1000):
                 raise ValueError()
+            edit['line'] = number
+            edit['before'] = lines[number - 1]
             seen.add(number)
     except (ValueError, KeyError, TypeError):
         raise GeminiError('Gemini returned an edit that could not be matched to the draft. Please try again.') from None
