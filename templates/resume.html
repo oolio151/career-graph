@@ -3,21 +3,21 @@
     <section class="resume-chat" aria-label="Resume chat">
       <div class="resume-chat-head">
         <h1>Shape the resume.</h1>
-        <p>Ask about a section. Replies use your courses and alumni first jobs.</p>
-        <p class="advisor-engine"><span id="advisor-engine-dot" class="engine-dot"></span><span id="advisor-engine">Checking advisor…</span></p>
+        <p>Ask about a section. Replies use your courses and alumni first jobs, on this computer.</p>
       </div>
       <div id="resume-messages" role="log" aria-live="polite" aria-relevant="additions"></div>
       <div class="resume-prompts">
-        <button type="button" data-resume-prompt="What should I add?">What should I add?</button>
-        <button type="button" data-resume-prompt="How does this compare with alumni jobs?">Compare with alumni jobs</button>
-        <button type="button" data-resume-prompt="Which of my experiences should I describe?">Which experience should I expand?</button>
+        <button type="button" data-resume-prompt="Improve my resume">Improve my resume</button>
+        <button type="button" data-resume-prompt="Which roles does my resume fit?">Which roles does my resume fit?</button>
+        <button type="button" data-resume-prompt="What experience should I gain?">What experience should I gain?</button>
+        <button type="button" data-resume-prompt="How did similar alumni start?">How did similar alumni start?</button>
       </div>
       <form id="resume-chat-form">
         <label class="sr-only" for="resume-chat-input">Message the resume chat</label>
         <input id="resume-chat-input" maxlength="500" placeholder="Ask about a section" autocomplete="off" required>
         <button class="primary-button" type="submit" aria-label="Send message">Send</button>
       </form>
-      <p class="resume-chat-note" id="resume-chat-note">Grounded in synthetic alumni records. Not a promise about hiring.</p>
+      <p class="resume-chat-note">Synthetic alumni records. When AI is enabled, resume text and selected evidence are sent to Gemini. Not a promise about hiring.</p>
     </section>
     <section class="resume-stage" aria-label="Your resume">
       <div class="resume-stage-bar">
@@ -25,7 +25,18 @@
           <h2 id="resume-filename">Resume</h2>
           <p id="resume-file-note" class="field-hint"></p>
         </div>
-        <a class="secondary-button" href="/api/resume">Download</a>
+        <div class="resume-stage-actions">
+          <button type="button" class="primary-button" id="render-latex">Render PDF</button>
+          <button type="button" class="secondary-button" id="download-draft">Download draft</button>
+          <a class="secondary-button" href="/api/resume">Original</a>
+        </div>
+      </div>
+      <div class="resume-tabs" role="tablist" aria-label="Resume views">
+        <button type="button" role="tab" aria-selected="true" data-resume-view="draft">Draft</button>
+        <button type="button" role="tab" aria-selected="false" data-resume-view="changes">Changes <span id="resume-change-count">0</span></button>
+        <button type="button" role="tab" aria-selected="false" data-resume-view="latex">LaTeX</button>
+        <button type="button" role="tab" aria-selected="false" data-resume-view="preview">Preview</button>
+        <button type="button" role="tab" aria-selected="false" data-resume-view="original">Original</button>
       </div>
       <div id="resume-upload-prompt" class="resume-upload-prompt" hidden>
         <h3>Add your resume to get started.</h3>

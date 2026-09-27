@@ -3,6 +3,9 @@ import json
 import os
 import re
 import secrets
+import shutil
+import subprocess
+import tempfile
 import xml.etree.ElementTree as ET
 import zipfile
 import zlib
@@ -160,9 +163,12 @@ def _pdf_text(data):
 def create_app(test_config=None):
     load_dotenv(Path(__file__).resolve().parent / ".env")
     app = Flask(__name__, instance_relative_config=True)
+    vercel_runtime = os.environ.get("VERCEL") == "1"
+    upload_default = Path("/tmp/grit-resumes") if vercel_runtime else Path(app.instance_path) / "resumes"
     app.config.update(MAX_CONTENT_LENGTH=MAX_RESUME + 65536, SESSION_COOKIE_HTTPONLY=True,
                       SESSION_COOKIE_SAMESITE="Lax", DATA_DIR=Path(app.root_path) / "data",
-                      UPLOAD_DIR=Path(app.instance_path) / "resumes",
+                      UPLOAD_DIR=upload_default,
+                      SECRET_KEY=os.environ.get("SECRET_KEY", ""),
                       GEMINI_API_KEY=os.environ.get("GEMINI_API_KEY", ""),
                       GEMINI_MODEL=os.environ.get("GEMINI_MODEL", DEFAULT_MODEL))
     if test_config:
@@ -412,11 +418,48 @@ def create_app(test_config=None):
             return jsonify(error="Resume not found. Upload it again."), 404
         message = request.get_json(silent=True) or {}
         try:
-            text = resume_plain_text(current["extension"], file.read_bytes())[:20000]
+            draft = message.get("draft")
+            if draft is not None and not isinstance(draft, str):
+                return jsonify(error="The resume draft must be text."), 400
+            text = (draft if draft is not None else resume_plain_text(current["extension"], file.read_bytes()))[:20000]
             return jsonify(dataset.coach_resume(current["campus_id"], text, message.get("message", ""),
                                                 app.extensions["gemini"]))
         except ValueError as error:
             return jsonify(error=str(error)), 400
+
+    @app.post("/api/resume/render")
+    def render_resume():
+        current = state()
+        if not current:
+            return jsonify(error="Enter your student ID and resume to continue."), 401
+        payload = request.get_json(silent=True) or {}
+        source = payload.get("source", "")
+        if not isinstance(source, str) or not source.strip() or len(source) > 50000:
+            return jsonify(error="Provide a LaTeX resume under 50,000 characters."), 400
+        if "\\documentclass" not in source or "\\begin{document}" not in source:
+            return jsonify(error="The LaTeX draft needs a document class and document body."), 400
+        blocked = (r"\write18", r"\openin", r"\openout", r"\read", r"\include{", r"\input{")
+        if any(command in source.lower() for command in blocked):
+            return jsonify(error="That LaTeX source uses a command disabled by the safe renderer."), 400
+        tectonic = shutil.which("tectonic")
+        if not tectonic:
+            return jsonify(error="The LaTeX renderer is not installed on this server."), 503
+        with tempfile.TemporaryDirectory(prefix="careergraph-latex-") as folder:
+            tex = Path(folder) / "resume.tex"
+            tex.write_text(source, encoding="utf-8")
+            try:
+                completed = subprocess.run(
+                    [tectonic, "--untrusted", "--keep-logs", "--outdir", folder, str(tex)],
+                    cwd=folder, capture_output=True, text=True, timeout=30, check=False,
+                )
+            except subprocess.TimeoutExpired:
+                return jsonify(error="LaTeX rendering took too long."), 504
+            pdf = Path(folder) / "resume.pdf"
+            if completed.returncode != 0 or not pdf.exists():
+                detail = (completed.stderr or completed.stdout).strip().splitlines()
+                return jsonify(error="LaTeX could not render: " + (detail[-1] if detail else "check the source.")), 400
+            return send_file(io.BytesIO(pdf.read_bytes()), mimetype="application/pdf",
+                             as_attachment=False, download_name="resume-draft.pdf")
 
     @app.post("/api/session/clear")
     def clear():

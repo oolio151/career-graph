@@ -1,17 +1,53 @@
 {% extends "base.html" %}
 {% block theme_color %}#387e7d{% endblock %}
 {% block body_attributes %}class="school-entry" data-school=""{% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='js/welcome.js', v=8) }}" defer></script>{% endblock %}
+{% block scripts %}<script>if (!matchMedia("(prefers-reduced-motion: reduce)").matches) { document.documentElement.classList.add("intro"); setTimeout(() => document.documentElement.classList.add("intro-play"), 2500); }</script>
+<script src="{{ url_for('static', filename='js/welcome.js', v=9) }}" defer></script>{% endblock %}
 {% block content %}
-<header class="site-header"><a class="brand" href="/">grit</a><span class="school-logo"><img src="{{ url_for('static', filename='images/umbc.png') }}" alt="University of Maryland, Baltimore County" height="48"></span><span class="demo-label">Synthetic student demo</span></header>
-<main id="main" class="welcome-main">
-  <section class="page-heading"><div><h1>A starting point.<br>A world of possibilities.</h1><p>Meet your profile. See where alumni went next.</p></div></section>
-  <div class="welcome-grid">
-    <section class="onboarding-card" aria-labelledby="welcome-title">
+<section class="hero" aria-labelledby="hero-title">
+  <header class="site-header"><a class="brand" href="/"><span class="brand-symbol"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 7 8 4M8 17l8-4M6 9v6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="6" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="18" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="6" cy="18" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span>grit</a><span class="school-logo"><img src="{{ url_for('static', filename='images/umbc.png') }}" alt="University of Maryland, Baltimore County" height="48"></span><span class="demo-label">Synthetic student demo</span></header>
+  <div class="hero-body">
+    <div class="hero-copy">
+      <h1 id="hero-title"><span class="hero-line"><span>A starting point.</span></span><span class="hero-line"><span>A world of</span></span><span class="hero-line"><span>possibilities.</span></span></h1>
+      <p class="hero-sub">See where alumni with your major went first, where they went next, and which of their skills you already have.</p>
+    </div>
+    <figure class="hero-graph" aria-hidden="true">
+      <div class="career-graph" id="career-graph">
+        <svg class="career-edges"></svg>
+        <div class="graph-col">
+          <span class="graph-node root" data-node="you" style="--d:.55s">You</span>
+        </div>
+        <div class="graph-col" data-label="First job">
+          <span class="graph-node on-path" data-node="dev" data-from="you" style="--d:1.05s">Junior Developer</span>
+          <span class="graph-node" data-node="data" data-from="you" style="--d:1.13s">Data Analyst</span>
+          <span class="graph-node" data-node="soc" data-from="you" style="--d:1.21s">SOC Analyst</span>
+          <span class="graph-node" data-node="cloud" data-from="you" style="--d:1.29s">Cloud Support Engineer</span>
+        </div>
+        <div class="graph-col next" data-label="Next job">
+          <span class="graph-node on-path" data-node="swd" data-from="dev" style="--d:1.65s">Software Developer</span>
+          <span class="graph-node" data-node="app" data-from="dev" style="--d:1.73s">Applications Engineer</span>
+          <span class="graph-node" data-node="ae" data-from="data" style="--d:1.81s">Analytics Engineer</span>
+          <span class="graph-node" data-node="sec" data-from="soc" style="--d:1.89s">Security Analyst I</span>
+        </div>
+      </div>
+      <figcaption>Common first<span class="caption-next"> and second</span> jobs among alumni in the demo dataset</figcaption>
+    </figure>
+    <div class="hero-action">
+      <a class="primary-button hero-cta" id="continue" href="#main">Start with your student ID<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+    </div>
+  </div>
+</section>
+<main id="main" class="demo" tabindex="-1" aria-labelledby="welcome-title">
+  <div class="demo-grid">
+    <div class="demo-intro">
       <h2 id="welcome-title">Start with your student ID.</h2>
-      <p class="supporting-copy">Use an ID from the demo’s current student dataset.</p>
+      <p class="demo-lede">Look up a student from the demo’s current student dataset. grit builds their profile, then lines it up against alumni who studied the same thing.</p>
+      <ul class="benefit-list"><li><strong>Your studies</strong><span>Major, GPA, courses, and graduation plans.</span></li><li><strong>Your experience</strong><span>Internships, activities, and certifications.</span></li><li><strong>Alumni paths</strong><span>First roles, next jobs, and the skills behind them.</span></li></ul>
+      <p class="field-hint">This demo uses fictional records, not a live university system. A student ID looks up a profile; it does not verify identity.</p>
+    </div>
+    <section class="onboarding-card" aria-label="Student lookup">
       <form id="entry-form">
-        <label for="school">Select your school</label>
+        <label for="school">School</label>
         <select id="school" name="school" required>
           <option value="" disabled selected>Select your school</option>
           <option value="umbc">University of Maryland, Baltimore County</option>
@@ -20,15 +56,14 @@
         <div class="id-row"><input id="campus-id" name="campus_id" placeholder="CID-116490" pattern="[Cc][Ii][Dd]-[0-9]{6}" required autocomplete="off" aria-describedby="id-hint"><button type="button" class="secondary-button" id="find-student">Find student</button></div>
         <p id="id-hint" class="field-hint">Try <button class="sample-id" type="button" data-sample="CID-116490">CID-116490</button> or <button class="sample-id" type="button" data-sample="CID-514009">CID-514009</button>.</p>
         <div id="student-preview" class="student-preview" aria-live="polite" hidden></div>
-        <label class="upload-label" for="resume">Add your resume</label>
+        <label class="upload-label" for="resume">Resume</label>
         <input id="resume" name="resume" type="file" accept=".pdf,.docx,.txt" aria-describedby="resume-hint">
         <label class="resume-toggle"><input id="skip-resume" name="skip_resume" type="checkbox"> I’ll add a resume later</label>
-        <p id="resume-hint" class="field-hint">PDF, DOCX, or TXT · Up to 5 MB. Stored on this computer. The resume page can read it here. It is not sent to an outside model.</p>
+        <p id="resume-hint" class="field-hint">PDF, DOCX, or TXT, up to 5 MB. Stored on this computer. When AI is enabled, extracted resume text and selected evidence are sent to Gemini.</p>
         <p id="entry-error" class="form-error" role="alert" hidden></p>
         <button type="submit" class="primary-button" id="enter-app">Discover my possibilities</button>
       </form>
     </section>
-    <aside class="welcome-aside"><h2>Your story, connected.</h2><ul class="benefit-list"><li><strong>Your studies</strong><span>Major, GPA, courses, and graduation plans.</span></li><li><strong>Your experience</strong><span>Internships, activities, and certifications.</span></li><li><strong>Alumni paths</strong><span>First roles, next jobs, and the skills behind them.</span></li></ul><p class="field-hint">This demo uses fictional records, not a live university system. A student ID looks up a profile; it does not verify identity.</p></aside>
   </div>
 </main>
 {% endblock %}
