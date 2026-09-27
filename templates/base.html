@@ -14,12 +14,12 @@
     </title>
     <link
       rel="stylesheet"
-      href="{{ url_for('static', filename='css/style.css', v=15) }}"
+      href="{{ url_for('static', filename='css/style.css', v=16) }}"
     />
     {% block scripts %}<script src="{{ url_for('static', filename='js/main.js', v=12) }}" defer></script>
     <script src="{{ url_for('static', filename='js/discover.js', v=11) }}" defer></script>
     <script src="{{ url_for('static', filename='js/resume.js', v=5) }}" defer></script>
-    <script src="{{ url_for('static', filename='js/connect.js', v=2) }}" defer></script>{% endblock %}
+    <script src="{{ url_for('static', filename='js/connect.js', v=3) }}" defer></script>{% endblock %}
   </head>
   <body {% block body_attributes %}data-school="{{ session.get('school', '') }}"{% endblock %} data-student-id="{{ student_id|default('') }}">
     <a class="skip-link" href="#main">Skip to content</a>

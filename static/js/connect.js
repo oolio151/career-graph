@@ -59,31 +59,39 @@ const emailSubject = document.querySelector("#connect-email-subject");
 const emailBody = document.querySelector("#connect-email-body");
 const emailStatus = document.querySelector("#connect-email-status");
 const emailCopy = document.querySelector("#connect-email-copy");
+const emailRedraft = document.querySelector("#connect-email-redraft");
+const emailMail = document.querySelector("#connect-email-mail");
+let emailRecipient = null;
+let emailPositions = [];
 let emailRequest = null;
 let saveEmail = null;
 let emailModel = "";
 let emailReady = false;
-async function openConnectEmail(alum, positions, saved, onSave) {
+async function openConnectEmail(alum, positions, saved, onSave, regenerate = false) {
   emailRequest?.abort();
   const controller = new AbortController(); emailRequest = controller;
-  saveEmail = onSave; emailReady = false;
+  saveEmail = onSave; emailReady = Boolean(saved);
+  emailRecipient = alum; emailPositions = positions;
+  emailModel = saved?.model || "";
   document.querySelector("#connect-email-to").textContent =
     `${alum.full_name} <${alum.email || "No email recorded"}>`;
   emailSubject.value = saved?.subject || "";
   emailBody.value = saved?.body || "";
-  emailSubject.disabled = emailBody.disabled = emailCopy.disabled = !saved;
+  emailSubject.disabled = emailBody.disabled = emailCopy.disabled = emailRedraft.disabled = emailMail.disabled = true;
   emailStatus.textContent = "Gemini is drafting your introduction…";
-  emailDialog.showModal();
+  if (!emailDialog.open) emailDialog.showModal();
   const timeout = setTimeout(() => controller.abort(), 45000);
   try {
-    const result = saved || await api("/api/connect/draft", {
+    const result = (!regenerate && saved) || await api("/api/connect/draft", {
       method: "POST", signal: controller.signal,
       headers: {"Content-Type": "application/json", "X-CSRF-Token": csrfToken},
       body: JSON.stringify({alumni_id: alum.campus_id, positions})});
     if (emailRequest !== controller || !emailDialog.open) return;
     emailSubject.value = result.subject; emailBody.value = result.body; emailModel = result.model;
     emailReady = true;
-    emailSubject.disabled = emailBody.disabled = emailCopy.disabled = false;
+    emailSubject.disabled = emailBody.disabled = emailCopy.disabled = emailRedraft.disabled = false;
+    emailMail.disabled = !alum.email;
+    emailMail.title = alum.email ? "Open this draft in your email app" : "No email address recorded";
     emailStatus.textContent = `Drafted by ${result.model}. Review and edit your introduction.`;
     onSave(result);
   } catch (error) {
@@ -91,8 +99,27 @@ async function openConnectEmail(alum, positions, saved, onSave) {
       emailStatus.textContent = error.name === "AbortError"
         ? "Drafting timed out. Close this window and try again."
         : `${error.message} Close this window and try again.`;
-  } finally { clearTimeout(timeout); }
+  } finally {
+    clearTimeout(timeout);
+    if (emailRequest === controller && emailDialog.open) {
+      emailRedraft.disabled = false;
+      emailSubject.disabled = emailBody.disabled = emailCopy.disabled = !emailReady;
+      emailMail.disabled = !emailReady || !alum.email;
+    }
+  }
 }
+emailRedraft.addEventListener("click", () => {
+  if (!emailRecipient || emailRedraft.disabled) return;
+  const saved = emailReady ? {subject: emailSubject.value, body: emailBody.value, model: emailModel} : null;
+  if (saved) saveEmail?.(saved);
+  openConnectEmail(emailRecipient, emailPositions, saved, saveEmail, true);
+});
+emailMail.addEventListener("click", () => {
+  if (!emailReady || !emailRecipient?.email || emailMail.disabled) return;
+  const subject = emailSubject.value.replace(/[\r\n]/g, " ");
+  const body = emailBody.value.replace(/\r?\n/g, "\r\n");
+  window.location.href = `mailto:${encodeURIComponent(emailRecipient.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+});
 document.querySelector("#connect-email-close").addEventListener("click", () => emailDialog.close());
 emailDialog.addEventListener("close", () => {
   emailRequest?.abort(); emailRequest = null;

@@ -25,7 +25,14 @@
   </div>
   <footer class="email-footer">
     <p id="connect-email-status" role="status" aria-live="polite"></p>
-    <button type="button" class="primary-button" id="connect-email-copy" disabled>Copy email</button>
+    <div class="email-actions">
+      <button type="button" class="secondary-button" id="connect-email-redraft" disabled>Redraft</button>
+      <button type="button" class="secondary-button" id="connect-email-copy" disabled>Copy email</button>
+      <button type="button" class="primary-button" id="connect-email-mail" disabled>
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 6 9 7 9-7"/></svg>
+        Open in email app
+      </button>
+    </div>
     <p class="email-note">Synthetic contact · Editable draft · Nothing is sent</p>
   </footer>
 </dialog>

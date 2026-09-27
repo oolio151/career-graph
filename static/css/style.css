@@ -1621,6 +1621,7 @@ body:has(#view-discover), body:has(#view-resume) {
 .email-content > label { font-size: 12px; color: var(--muted); }
 #connect-email-body { display: block; width: 100%; height: 32vh; min-height: 220px; resize: vertical; overflow-y: auto; border: 0; padding: 12px 0; background: #fff; color: var(--ink); font-family: inherit; font-size: 15px; line-height: 1.85; }
 .email-footer { padding: 16px 30px 24px; border-top: 1px solid var(--line); }
+.email-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 #connect-email-status { font-size: 13px; margin: 0 0 12px; }
 #connect-email .email-note { font-size: 12px; color: var(--muted); margin: 14px 0 0; }
 
