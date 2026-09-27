@@ -480,7 +480,7 @@ def create_app(test_config=None):
             history_path = private / f"{session['upload_id']}.editor-chat.json"
             history = read_history(history_path)
             result = propose_edits(dataset, current['campus_id'], lines, payload.get('message'),
-                                   history, app.extensions['gemini'])
+                                   history, app.extensions['gemini'], payload.get('target_role', ''))
             write_history(history_path, [*history, {'user': payload['message'],
                 'advisor': json.dumps(result, ensure_ascii=False)}])
             return jsonify(result)

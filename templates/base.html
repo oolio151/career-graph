@@ -17,8 +17,8 @@
       href="{{ url_for('static', filename='css/style.css', v=29) }}"
     />
     {% block scripts %}<script src="{{ url_for('static', filename='js/main.js', v=12) }}" defer></script>
-    <script src="{{ url_for('static', filename='js/discover.js', v=17) }}" defer></script>
-    <script src="{{ url_for('static', filename='js/resume.js', v=11) }}" defer></script>
+    <script src="{{ url_for('static', filename='js/discover.js', v=18) }}" defer></script>
+    <script src="{{ url_for('static', filename='js/resume.js', v=12) }}" defer></script>
     <script src="{{ url_for('static', filename='js/connect.js', v=2) }}" defer></script>{% endblock %}
   </head>
   <body {% block body_attributes %}{% endblock %} data-student-id="{{ student_id|default('') }}">

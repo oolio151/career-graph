@@ -1,7 +1,6 @@
 "use strict";
 const resumeCsrf = document.querySelector('meta[name="csrf-token"]').content;
 const resumeStudentId = document.body.dataset.studentId;
-let resumeRoleEdited = false;
 let resumeLoaded = false, resumeLines = [], originalLines = [], undoEdits = [], resumeRevision = 0;
 let draftPdf = '', reviewPdf = '', originalPdf = '', resumeView = 'original', resumeBusy = false;
 const resumeEl = id => document.getElementById(id);
@@ -129,28 +128,27 @@ async function sendResumeChat(question) {
   const pending = resumeMessage('Thinking through your resume…'); pending.classList.add('pending');
   const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 100000);
   try {
-    const data = await (await resumeApi('/api/resume/editor/chat', {...resumePost({message, lines: resumeLines}), signal: controller.signal})).json();
+    const data = await (await resumeApi('/api/resume/editor/chat', {...resumePost({
+      message, lines: resumeLines, target_role: resumeEl('resume-target-role').value,
+    }), signal: controller.signal})).json();
     resumeMessage(data.reply, 'advisor', data.edits, data.model);
   } catch (error) { resumeMessage(error.name === 'AbortError' ? 'The reply timed out. Please try again.' : error.message); }
   finally { pending.remove(); clearTimeout(timeout); resumeLock(false); }
 }
 resumeEl('resume-chat-form').addEventListener('submit', event => { event.preventDefault(); sendResumeChat(resumeEl('resume-chat-input').value); });
-resumeEl('resume-target-role').addEventListener('input', () => { resumeRoleEdited = true; });
 function syncDiscoverRole() {
-  const role = window.gritDiscoverTargetRole || '';
-  const input = resumeEl('resume-target-role');
-  if (role && !resumeRoleEdited) input.value = role;
-  resumeEl('resume-target-question').textContent = role
-    ? `Discover selected “${role}”. Discuss focused changes for this role while keeping your LaTeX template.`
-    : 'Enter a role to discuss focused edits to your existing resume.';
+  const select = resumeEl('resume-target-role');
+  const previous = select.value;
+  const options = [...new Set(window.gritDiscoverCareerOptions || [])];
+  select.replaceChildren(new Option('No target role selected', ''),
+    ...options.map(role => new Option(role, role)));
+  const graphRole = window.gritDiscoverTargetRole || '';
+  if (graphRole && options.includes(graphRole)) select.value = graphRole;
+  else if (previous && options.includes(previous)) select.value = previous;
 }
 syncDiscoverRole();
+window.addEventListener('grit:discover-role-options', syncDiscoverRole);
 window.addEventListener('hashchange', () => { if (location.hash === '#resume') syncDiscoverRole(); });
-resumeEl('resume-generate-form').addEventListener('submit', event => {
-  event.preventDefault();
-  const role = resumeEl('resume-target-role').value.trim();
-  if (role) sendResumeChat(`Help tailor my current LaTeX resume for a ${role} role. Ask me about missing details first, then propose relevant edits to existing lines. Preserve my document commands and formatting.`);
-});
 document.querySelectorAll('[data-resume-prompt]').forEach(el => el.addEventListener('click', () => sendResumeChat(el.dataset.resumePrompt)));
 document.querySelectorAll('[data-resume-view]').forEach(el => el.addEventListener('click', () => { if (!originalPdf) return; resumeView = el.dataset.resumeView; renderResumeView(); }));
 resumeEl('resume-line').addEventListener('change', () => { resumeEl('resume-line-text').value = resumeLines[Number(resumeEl('resume-line').value)]; });

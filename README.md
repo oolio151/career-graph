@@ -59,6 +59,8 @@ follow-up questions and propose replacements for exact numbered source lines. Ac
 dismiss each proposal, make a precise manual edit, and undo accepted changes. Updated and
 comparison source views preserve the original document class, packages, and formatting;
 download the revised `.tex` and compile it with the same toolchain as the original.
+The selected gritGraph position is the default target role; choose another graph role from
+the Resume Studio dropdown. Gemini receives that selection as context on each conversation turn.
 
 **LaTeX preview.** Previews use real compilation; compilation failures are shown in the
 conversation and never replaced with an approximate document. The compiler is resolved from

@@ -60,8 +60,19 @@ class Gemini:
             with urllib.request.urlopen(request, timeout=self.timeout) as response:
                 payload = json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as error:
-            # Detail can name the model or the key; keep the status, drop the body.
-            raise GeminiError(f"Gemini returned HTTP {error.code}.") from None
+            # Google returns actionable model/project details in its JSON error body.
+            try:
+                body = json.loads(error.read().decode("utf-8"))
+                detail = ((body.get("error") or {}).get("message") or "").strip()
+                status = ((body.get("error") or {}).get("status") or "").strip()
+                if status and status.lower() not in detail.lower():
+                    detail = f"{status}: {detail}" if detail else status
+            except (UnicodeDecodeError, ValueError, AttributeError):
+                detail = ""
+            if self.api_key:
+                detail = detail.replace(self.api_key, "[redacted]")
+            suffix = f": {detail}" if detail else ""
+            raise GeminiError(f"Gemini returned HTTP {error.code}{suffix}.") from None
         except (urllib.error.URLError, TimeoutError, OSError) as error:
             raise GeminiError(f"Could not reach Gemini: {error}.") from None
         except (ValueError, KeyError):

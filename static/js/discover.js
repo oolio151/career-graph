@@ -15,6 +15,7 @@ let aiSkills = new Set();
 let requestVersion = 0;
 let hasArrived = false;
 window.gritDiscoverTargetRole = "";
+window.gritDiscoverCareerOptions = [];
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
 
 async function api(url, options) {
@@ -308,6 +309,10 @@ function renderDiscover(data) {
   const job = data.first_jobs.find(job => job.title === selectedFamily);
   if (!job?.next_roles.slice(0, 5).some(role => role.title === selectedNextJob)) selectedNextJob = "";
   window.gritDiscoverTargetRole = selectedNextJob || selectedFamily || "";
+  window.gritDiscoverCareerOptions = [...new Set(data.first_jobs.flatMap(first => [
+    first.title, ...first.next_roles.map(next => next.title),
+  ]))].sort((a, b) => a.localeCompare(b));
+  window.dispatchEvent(new Event("grit:discover-role-options"));
   setResultsHidden(false);
   renderAlumniMap(data);
   renderJobDetail(job, data);

@@ -22,14 +22,13 @@
           <button type="button" class="primary-button" id="download-draft" disabled>Download .tex</button>
         </div>
       </div>
-      <form id="resume-generate-form" class="resume-generate-form">
+      <div class="resume-generate-form">
         <label for="resume-target-role">Target role</label>
-        <p id="resume-target-question" class="field-hint">Enter a role to discuss focused edits to your existing resume.</p>
-        <div class="resume-generate-row">
-          <input id="resume-target-role" maxlength="160" placeholder="e.g., Data Analyst" autocomplete="off" required>
-          <button type="submit" class="primary-button">Discuss edits</button>
-        </div>
-      </form>
+        <select id="resume-target-role" aria-describedby="resume-target-help">
+          <option value="">No target role selected</option>
+        </select>
+        <p id="resume-target-help" class="field-hint">The advisor considers this role when discussing resume edits. Select a node in gritGraph to set the default.</p>
+      </div>
       <div class="resume-tabs" aria-label="LaTeX views">
         <button type="button" aria-pressed="true" data-resume-view="original">Original preview</button>
         <button type="button" aria-pressed="false" data-resume-view="draft" disabled>Updated preview</button>

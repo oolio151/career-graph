@@ -104,12 +104,14 @@ def validate_lines(lines):
     return lines
 
 
-def propose_edits(dataset, campus_id, lines, question, history, gemini):
+def propose_edits(dataset, campus_id, lines, question, history, gemini, target_role=''):
     validate_lines(lines)
     if not isinstance(question, str) or not question.strip() or len(question) > 1000:
         raise ValueError('Ask a question using 1–1,000 characters.')
     if not gemini.enabled:
         raise GeminiError('Configure Gemini to discuss and propose resume edits.')
+    if not isinstance(target_role, str) or len(target_role) > 160:
+        raise ValueError('Choose a target role shorter than 160 characters.')
     instruction = SYSTEM_INSTRUCTION + '''
 For this resume editing workspace, override the plain-text response format and suggestion
 marker with JSON only: {"reply": "conversational answer or follow-up question", "edits":
@@ -118,7 +120,8 @@ Return plain text and line numbers only. Never return PDF data, PDF operators, b
 HTML, Markdown fences, or a replacement document. The current lines are LaTeX source;
 preserve commands and edit only the requested content unless a source command change is
 explicitly requested.
-Use at most three edits per turn. Most discussion or clarification turns need edits: [].
+Use the optional target role as background when it helps focus resume advice. Do not force it
+into unrelated replies. Use at most three edits per turn. Most discussion or clarification turns need edits: [].
 When the request is broad, identify a concrete section and ask one or two focused questions
 about the student's actual contribution, tools, or results. Don't invent metrics. Refer to
 line numbers when useful. Only propose edits relevant to the student's request. Clarify
@@ -132,7 +135,7 @@ until the student approves them. Previous proposals in history are not proof of 
 '''
     context = {'background': dataset.resume_context(campus_id, 'See current_lines for the resume source.'),
                'current_lines': [{'line': i + 1, 'text': line} for i, line in enumerate(lines)],
-               'recent_conversation': history, 'question': question}
+               'recent_conversation': history, 'question': question, 'target_role': target_role}
     raw = gemini.generate(json.dumps(context, ensure_ascii=False), instruction, json_mode=True)
     try:
         parsed = json.loads(re.sub(r'^```(?:json)?\s*|\s*```$', '', raw.strip()))
