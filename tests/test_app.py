@@ -174,7 +174,7 @@ class AppTests(unittest.TestCase):
             chat = self.client.post("/api/resume/chat", json={"message": "What should I add?"}, headers={"X-CSRF-Token": self.csrf})
         self.assertEqual(chat.status_code, 200)
         self.assertEqual(chat.json["source"], "gemini")
-        self.assertEqual(chat.json["model"], "gemini-3-flash-preview")
+        self.assertEqual(chat.json["model"], "gemini-3.5-flash-lite")
         self.assertEqual(chat.json["suggestion"], "Built a Flask service over a 1.4M-row dataset.")
         self.assertIn("synthetic", chat.json["reply"])
         self.assertNotIn("SUGGESTED RESUME LINE", chat.json["reply"])
@@ -183,6 +183,22 @@ class AppTests(unittest.TestCase):
         self.assertIn("Data & Analytics", prompt)
         self.assertIn("Example Student", prompt)
         self.assertIn("synthetic", system.lower())
+
+    def test_resume_chat_remembers_followups_and_resets_on_replacement(self):
+        self.enroll()
+        self.app.extensions['gemini'] = Gemini('test-key')
+        headers = {'X-CSRF-Token': self.csrf}
+        with mock.patch.object(Gemini, 'generate', return_value='Try a small team project.') as generate:
+            self.client.post('/api/resume/chat', json={'message': 'I want to try a hackathon.'}, headers=headers)
+            response = self.client.post('/api/resume/chat', json={'message': 'How should I prepare for it?'}, headers=headers)
+            self.assertEqual(response.status_code, 200)
+            prompt = generate.call_args.args[0]
+            self.assertIn('I want to try a hackathon.', prompt)
+            self.assertIn('Try a small team project.', prompt)
+            self.assertEqual(self.app.test_client().post('/api/resume/chat', json={'message': 'Hi'}).status_code, 403)
+            self.enroll()
+            self.client.post('/api/resume/chat', json={'message': 'Hello'}, headers=headers)
+            self.assertNotIn('I want to try a hackathon.', generate.call_args.args[0])
 
     def test_truncation_notice_never_lands_in_the_pasteable_line(self):
         data = self.data
@@ -210,7 +226,7 @@ class AppTests(unittest.TestCase):
     def test_chat_config_never_exposes_the_key(self):
         self.app.extensions["gemini"] = Gemini("super-secret-key")
         config = self.client.get("/api/resume/chat/config")
-        self.assertEqual(config.json, {"engine": "gemini", "model": "gemini-3-flash-preview"})
+        self.assertEqual(config.json, {"engine": "gemini", "model": "gemini-3.5-flash-lite"})
         self.assertNotIn("super-secret-key", config.get_data(as_text=True))
         health = self.client.get("/api/health").json
         self.assertEqual(health["advisor"]["engine"], "gemini")
@@ -308,7 +324,7 @@ class GeminiClientTests(unittest.TestCase):
         self.assertEqual(text, "hello")
         request = urlopen.call_args.args[0]
         self.assertEqual(request.get_method(), "POST")
-        self.assertIn("gemini-3-flash-preview:generateContent", request.full_url)
+        self.assertIn("gemini-3.5-flash-lite:generateContent", request.full_url)
         self.assertEqual(request.get_header("X-goog-api-key"), "secret-key")
         body = json.loads(request.data)
         self.assertEqual(body["contents"], [{"role": "user", "parts": [{"text": "prompt"}]}])

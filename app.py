@@ -22,10 +22,11 @@ from dotenv import load_dotenv
 from gemini import DEFAULT_MODEL, Gemini
 from python.discover_map import discover_map
 from python.connect import matches, draft_email
+from python.chat_history import read_history, write_history
 from gemini import GeminiError
 
 MAX_RESUME = 5 * 1024 * 1024
-GEMINI_MODEL = "gemini-2.5-flash-lite"
+GEMINI_MODEL = DEFAULT_MODEL
 
 
 def gemini_skill_flags(resume_text, known_skills):
@@ -39,9 +40,10 @@ def gemini_skill_flags(resume_text, known_skills):
         "Choose only from this allowed vocabulary: " + ", ".join(sorted(known_skills)) +
         "\\n\\nResume:\\n" + resume_text[:20000]
     )
+    model = os.environ.get("GEMINI_MODEL", GEMINI_MODEL)
     payload = json.dumps({"contents": [{"parts": [{"text": prompt}]}]}).encode()
     request = Request(
-        f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={api_key}",
+        f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}",
         data=payload,
         headers={"Content-Type": "application/json"},
         method="POST",
@@ -417,13 +419,27 @@ def create_app(test_config=None):
         if file is None:
             return jsonify(error="Resume not found. Upload it again."), 404
         message = request.get_json(silent=True) or {}
+        if not isinstance(message, dict) or not isinstance(message.get('message'), str):
+            return jsonify(error="Send a text message."), 400
         try:
             draft = message.get("draft")
             if draft is not None and not isinstance(draft, str):
                 return jsonify(error="The resume draft must be text."), 400
             text = (draft if draft is not None else resume_plain_text(current["extension"], file.read_bytes()))[:20000]
-            return jsonify(dataset.coach_resume(current["campus_id"], text, message.get("message", ""),
-                                                app.extensions["gemini"]))
+            history_path = private / f"{session['upload_id']}.chat.json"
+            history = read_history(history_path)
+            result = dataset.coach_resume(current["campus_id"], text, message.get("message", ""),
+                                          app.extensions["gemini"], history=history)
+            # Don't remember fallback replies as model-generated conversation.
+            if result['source'] == 'gemini':
+                advisor = result['reply']
+                if result.get('suggestion'):
+                    advisor += '\nSUGGESTED RESUME LINE: ' + result['suggestion']
+                try:
+                    write_history(history_path, [*history, {'user': message['message'].strip(), 'advisor': advisor}])
+                except OSError:
+                    app.logger.warning('Could not save resume chat history.')
+            return jsonify(result)
         except ValueError as error:
             return jsonify(error=str(error)), 400
 

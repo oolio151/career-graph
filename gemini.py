@@ -8,7 +8,7 @@ import urllib.error
 import urllib.request
 
 ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-DEFAULT_MODEL = "gemini-2.5-flash-lite"
+DEFAULT_MODEL = "gemini-2.5-flash"
 TIMEOUT = 30
 # Gemini 3 reasons by default and its thinking tokens are drawn from the same
 # maxOutputTokens budget, so a small cap silently truncates the visible reply.

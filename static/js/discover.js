@@ -177,6 +177,7 @@ function mapNode(map, key, attrs) {
   tweenNumber(node.querySelector("b"), attrs.value);
   node.querySelector("em").textContent = attrs.suffix;
   node.classList.toggle("selected", attrs.selected);
+  node.classList.toggle("branch-parent", Boolean(attrs.branchParent));
   node.setAttribute("aria-pressed", attrs.selected);
   node.setAttribute("aria-label", `${attrs.title}, ${attrs.value}${attrs.suffix}`);
   for (const [name, value] of Object.entries(attrs.data)) node.dataset[name] = value;
@@ -227,6 +228,7 @@ function renderAlumniMap(data) {
     mapNode(map, key, {
       left: MAP.firstX, top: columnTop(jobs.length, i), title: job.title, value: job.percent,
       suffix: `% · ${job.count} first jobs`, selected: job.title === selectedFamily && !selectedNextJob,
+      branchParent: job.title === selectedFamily && Boolean(selectedNextJob),
       data: {firstJob: job.title},
     });
   });
@@ -254,7 +256,8 @@ function renderAlumniMap(data) {
       requestAnimationFrame(() => requestAnimationFrame(() => path.classList.remove("entering")));
     }
     path.classList.remove("leaving");
-    path.classList.toggle("active", key.startsWith("next:") || key === `first:${selectedFamily}`);
+    path.classList.toggle("active", key === `first:${selectedFamily}` ||
+      (Boolean(selectedNextJob) && key === `next:${selectedNextJob}`));
   }
   for (const [key, node] of mapNodes) {
     if (wanted.has(key)) continue;
