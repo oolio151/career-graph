@@ -1,13 +1,21 @@
 @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&display=swap');
 :root {
-  --paper:#fff8ef;
+  --paper:#f6f5f1;
   --white:#fff;
-  --ink:#211a35;
-  --muted:#625f6d;
-  --teal:#387e7d;
-  --yellow:#f7bb43;
-  --line:#e7dfd4;
-  --purple:#7150ca;
+  --ink:#20201e;
+  --muted:#68675f;
+  --accent:#171717;
+  --accent-shadow:#b58a16;
+  --accent-dark:#000000;
+  --accent-foreground:#ffcc00;
+  --accent-soft:#fff5cc;
+  --accent-border:#e2bc47;
+  --accent-track:#f6efd9;
+  --accent-edge:#dfcd94;
+  --accent-muted:#b7a46a;
+  --yellow:#ffcc00;
+  --line:#e3e1d9;
+  --purple:#987312;
   font-family:Rubik,system-ui,sans-serif;
   color:var(--ink);
   background:var(--paper);
@@ -222,7 +230,7 @@ main:focus {
 }
 
 .page-heading {
-  background:var(--teal);
+  background:var(--accent);
   color:white;
   border-radius:26px;
   padding:44px 42px;
@@ -246,7 +254,7 @@ main:focus {
 .page-heading p {
   font-size:17px;
   margin-top:16px;
-  color:#f0f8f5;
+  color:var(--accent-foreground);
 }
 
 .primary-button {
@@ -287,7 +295,7 @@ main:focus {
 }
 
 .major-picker label .icon {
-  color:var(--teal);
+  color:var(--accent);
 }
 
 .major-picker select {
@@ -425,13 +433,13 @@ main:focus {
 
 .edge {
   fill:none;
-  stroke:#b0bab5;
+  stroke:var(--accent-muted);
   stroke-width:2.3;
 }
 
 .cross-edge {
   stroke-dasharray:5 5;
-  stroke:#b0bab5;
+  stroke:var(--accent-muted);
 }
 
 .degree-node {
@@ -440,14 +448,14 @@ main:focus {
   top:34%;
   width:18.2%;
   height:32%;
-  background:var(--teal);
+  background:var(--accent);
   border-radius:16px;
   display:flex;
   flex-direction:column;
   align-items:center;
   justify-content:center;
   color:white;
-  box-shadow:0 4px 0 #286464;
+  box-shadow:0 4px 0 var(--accent-shadow);
 }
 
 .degree-node strong {
@@ -522,7 +530,7 @@ main:focus {
 }
 
 .role-node:hover:not(:disabled) {
-  border-color:var(--teal);
+  border-color:var(--accent);
 }
 
 .role-node.muted,.edge.muted {
@@ -658,8 +666,8 @@ main:focus {
 }
 
 .experience-card:nth-child(3) {
-  background:#e1eeea;
-  border-color:#c8dfd7;
+  background:var(--accent-soft);
+  border-color:var(--accent-border);
 }
 
 .experience-top {
@@ -747,9 +755,9 @@ main:focus {
 }
 
 .activity-toggle[aria-pressed=true] {
-  background:var(--teal);
+  background:var(--accent);
   color:white;
-  border-color:var(--teal);
+  border-color:var(--accent);
 }
 
 .engagement-grid .tags {
@@ -804,7 +812,7 @@ main:focus {
 .empty-state>.icon {
   width:40px;
   height:40px;
-  color:var(--teal);
+  color:var(--accent);
   margin-bottom:18px;
 }
 
@@ -930,7 +938,7 @@ main:focus {
 
 .message.user {
   align-self:flex-end;
-  background:var(--teal);
+  background:var(--accent);
   color:white;
   border-radius:17px 4px 17px 17px;
 }
@@ -1330,11 +1338,11 @@ dialog p {
 .upload-label.muted, #resume-hint.muted { opacity: .45; }
 #resume:disabled { opacity: .45; cursor: not-allowed; }
 .resume-toggle { display: flex !important; align-items: center; gap: 8px; margin-top: 12px; font-weight: 500 !important; cursor: pointer; }
-.resume-toggle input { width: 16px; height: 16px; accent-color: var(--teal); }
+.resume-toggle input { width: 16px; height: 16px; accent-color: var(--accent); }
 .id-row { display: flex; gap: 10px; }
 #campus-id { min-width: 0; flex: 1; border: 2px solid var(--line); border-radius: 12px; padding: 12px; font-size: 16px; text-transform: uppercase; }
 .sample-id { background: none; border: 0; text-decoration: underline; font-size: 13px; padding: 8px 3px; min-height: 44px; }
-.student-preview { padding: 18px; margin: 15px 0; border-radius: 13px; background: #e1eeea; }
+.student-preview { padding: 18px; margin: 15px 0; border-radius: 13px; background: var(--accent-soft); }
 .student-preview p { margin-top: 6px; font-size: 14px; }
 #entry-form .upload-label { margin-top: 25px; }
 input[type=file] { display: block; width: 100%; border: 2px dashed #bcb0a0; border-radius: 12px; padding: 14px; font-size: 14px; background: #fffaf4; }
@@ -1374,7 +1382,7 @@ th { background: #f4eee5; position: sticky; top: 0; }
 .cohort-filters label { display: flex; align-items: center; min-height: 48px; gap: 8px; background: white; padding: 10px 16px; border: 2px solid var(--line); border-radius: 12px; cursor: pointer; font-size: 14px; }
 .cohort-filters label:has(:checked) { background: #fff0c9; border-color: #e7b647; }
 .cohort-filters label:has(:disabled) { color: var(--muted); cursor: default; background: #eee8df; }
-.cohort-filters input { width: 18px; height: 18px; accent-color: var(--teal); }
+.cohort-filters input { width: 18px; height: 18px; accent-color: var(--accent); }
 .discover-status { font-size: 15px; margin: 18px 0 20px; max-width: 68ch; }
 .discover-layout { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(300px, .95fr); gap: 20px; align-items: start; }
 .field-panel { border: 2px solid var(--line); border-radius: 22px; background: #fffdfa; overflow: hidden; }
@@ -1384,13 +1392,13 @@ th { background: #f4eee5; position: sticky; top: 0; }
 .field-row:hover:not(.selected) { background: #fff8ef; }
 .field-row.selected { background: #fff0c9; }
 .field-name { font-size: 16px; font-weight: 700; letter-spacing: -.2px; }
-.field-share { font-size: 20px; font-weight: 800; letter-spacing: -.6px; color: var(--teal); }
-.field-row.selected .field-share { color: #1f4f4e; }
+.field-share { font-size: 20px; font-weight: 800; letter-spacing: -.6px; color: var(--accent); }
+.field-row.selected .field-share { color: var(--accent-dark); }
 .field-sample { grid-column: 1; font-size: 13px; color: var(--muted); }
 .field-row .percentage-track { grid-column: 1 / -1; margin: 8px 0 0; }
-.percentage-track { background: #edf1ee; height: 8px; border-radius: 8px; overflow: hidden; }
-.percentage-track span { display: block; height: 100%; background: var(--teal); border-radius: inherit; }
-.field-row.selected .percentage-track span { background: #1f4f4e; }
+.percentage-track { background: var(--accent-track); height: 8px; border-radius: 8px; overflow: hidden; }
+.percentage-track span { display: block; height: 100%; background: var(--accent); border-radius: inherit; }
+.field-row.selected .percentage-track span { background: var(--accent-dark); }
 .empty-fields { padding: 8px 20px 20px; color: var(--muted); font-size: 14px; }
 .discover-detail { position: sticky; top: 16px; }
 .discover-detail h4 { font-size: 15px; margin: 22px 0 10px; }
@@ -1457,3 +1465,153 @@ th { background: #f4eee5; position: sticky; top: 0; }
   .resume-sheet { padding: 28px 22px 40px; min-height: calc(100% - 40px); } }
 
 @media (max-width: 760px) { .site-header nav { flex-wrap: wrap; justify-content: flex-start; } .nav-item { flex: 0 1 auto; padding: 9px 12px; } .profile-strip { align-items: flex-start; flex-direction: column; padding: 20px; gap: 16px; } .profile-actions { align-items: flex-start; } .profile-actions .inline-link { text-align: left; } .profile-facts { grid-template-columns: repeat(2, 1fr); padding: 16px; gap: 18px; } .onboarding-card { padding: 22px; } .id-row { flex-direction: column; } .compact-list small { display: block; } .welcome-main .page-heading { padding: 28px 24px; } .share-figure strong { font-size: 34px; } .field-row { padding: 14px 16px 16px; } }
+
+/* Discover: observed job map with a detail panel underneath. */
+.alumni-map-scroll { overflow:auto; max-height:560px; padding:20px; }
+#alumni-map { position:relative; min-width:940px; }
+.alumni-column-label { position:absolute; top:0; color:var(--muted); font-size:13px; font-weight:600; }
+.alumni-edges { position:absolute; inset:0; pointer-events:none; }
+.alumni-edges path { fill:none; stroke:var(--accent-edge); stroke-width:2; }
+.alumni-edges path.active { stroke:var(--accent); stroke-width:3; }
+.alumni-root { position:absolute; left:20px; width:170px; height:110px; padding:18px; display:flex; flex-direction:column; justify-content:center; border-radius:16px; background:var(--accent); color:white; font-weight:700; box-shadow:0 4px 0 var(--accent-shadow); }
+.alumni-root small { font-size:11px; margin-top:8px; font-weight:400; }
+.alumni-node { position:absolute; width:230px; height:64px; padding:10px 14px; border:2px solid var(--line); border-radius:13px; background:white; text-align:left; box-shadow:0 3px 0 #e9e3da; }
+.alumni-node strong,.alumni-node span { display:block; }
+.alumni-node strong { font-size:13px; line-height:1.2; }
+.alumni-node span { font-size:11px; color:var(--muted); margin-top:5px; }
+.alumni-node.selected { background:#fff0c9; border-color:#e7b647; }
+.alumni-node:hover,.alumni-node:focus-visible { border-color:var(--accent); }
+.alumni-no-next { position:absolute; left:680px; top:60px; width:230px; color:var(--muted); font-size:13px; }
+.alumni-job-detail { margin-top:24px; padding:28px; background:#fffdfa; border:2px solid var(--line); border-radius:22px; display:grid; grid-template-columns:1fr 1.2fr 1fr; gap:32px; align-items:start; }
+.alumni-job-detail[hidden] { display:none; }
+.alumni-job-detail h2 { font-size:26px; margin:8px 0 18px; }
+.alumni-job-detail h3 { font-size:16px; margin-bottom:14px; }
+.alumni-job-detail .covered { background:var(--yellow); color:var(--ink); }
+
+/* School selection starts in the original teal palette. */
+.school-entry:not([data-school="umbc"]) {
+  --accent:#387e7d;
+  --accent-shadow:#286464;
+  --accent-dark:#1f4f4e;
+  --accent-foreground:#f0f8f5;
+  --accent-soft:#e1eeea;
+  --accent-border:#c8dfd7;
+  --accent-track:#edf1ee;
+  --accent-edge:#d2dcd7;
+  --accent-muted:#b0bab5;
+}
+.school-entry *, .school-entry *::before, .school-entry *::after {
+  transition: color 1.2s ease, background-color 1.2s ease, border-color 1.2s ease, box-shadow 1.2s ease, fill 1.2s ease, stroke 1.2s ease;
+}
+#school { display:block; width:100%; padding:14px 12px; margin-bottom:24px; border:2px solid var(--accent-border); border-radius:12px; background:var(--accent-soft); color:var(--ink); }
+.school-entry .brand, .school-entry .welcome-aside h2 { color:var(--accent); }
+.school-entry #enter-app { background:var(--accent); color:var(--accent-foreground); border-color:var(--accent); box-shadow:0 4px 0 var(--accent-shadow); }
+.school-entry #enter-app:hover { background:var(--accent-dark); }
+@media (prefers-reduced-motion: reduce) {
+  .school-entry *, .school-entry *::before, .school-entry *::after { transition:none; }
+}
+
+/* UMBC visual system: neutral canvas, charcoal anchors, selective gold. */
+body { background:var(--paper); }
+body:has(#view-discover), body:has(#view-resume) {
+  --paper:#f6f5f1;
+  --ink:#20201e;
+  --muted:#68675f;
+  --line:#e3e1d9;
+  min-height:100vh;
+  background:var(--paper);
+}
+.site-header { min-height:88px; border-bottom:1px solid var(--line); margin-bottom:28px; }
+.brand-symbol { transform:none; border:0; border-radius:10px; box-shadow:none; }
+.nav-item { color:var(--muted); border-radius:9px; font-weight:500; }
+.nav-item.active { background:#22221f; color:#ffcc00; box-shadow:none; }
+.nav-item:hover:not(.active), .icon-button:hover { background:#eae9e3; color:var(--ink); }
+:focus-visible { outline:2px solid #987312; outline-offset:4px; }
+.primary-button { background:#ffcc00; color:#20201e; border-color:#ffcc00; box-shadow:0 2px 4px #20201e12; border-radius:10px; }
+.primary-button:hover { background:#efbf00; border-color:#efbf00; box-shadow:0 3px 8px #20201e18; }
+.secondary-button { background:#fff; border:1px solid #d7d5cb; border-radius:10px; color:var(--ink); }
+.secondary-button:hover { background:#f5f4ef; border-color:#aaa79b; }
+.profile-strip, .onboarding-card, .alumni-job-detail, .outcomes, .resume-chat, .resume-stage {
+  background:#fff; border:1px solid var(--line); border-radius:18px; box-shadow:0 4px 20px #20201e05;
+}
+.profile-strip { padding:20px 24px; margin-bottom:32px; }
+.profile-strip h2 { font-size:24px; font-weight:600; letter-spacing:-.6px; }
+.discover-section h1 { font-size:30px; letter-spacing:-.8px; line-height:1.2; }
+.cohort-filters { gap:10px; }
+.cohort-filters label { min-height:42px; padding:8px 13px; border-width:1px; border-radius:9px; font-size:13px; }
+.cohort-filters label:has(:checked) { background:#fff6cf; border-color:#d4ac32; }
+.discover-status { color:var(--muted); font-size:13px; margin:16px 0; }
+#view-discover .alumni-map-panel { background:#fff; border:1px solid var(--line); border-radius:18px; box-shadow:0 4px 20px #20201e05; overflow:hidden; }
+#view-discover .graph-toolbar { background:#fafaf7; color:var(--muted); border-bottom:1px solid var(--line); padding:16px 22px; font-size:13px; }
+.alumni-map-scroll { background:radial-gradient(#dfddd4 .7px, transparent .7px); background-size:18px 18px; }
+.alumni-column-label { font-size:11px; text-transform:uppercase; letter-spacing:1.2px; font-weight:600; }
+.alumni-edges path { stroke:#dedbd0; stroke-width:2; }
+.alumni-edges path.active { stroke:#bd951d; stroke-width:2.5; }
+.alumni-root { background:#242420; color:#ffcc00; box-shadow:0 4px 12px #20201e14; border-radius:13px; }
+.alumni-root small { color:#d5d3c8; }
+.alumni-node { border:1px solid #dedcd2; border-radius:11px; box-shadow:0 2px 6px #20201e07; }
+.alumni-node:hover { background:#fffdf4; border-color:#b49a4c; box-shadow:0 4px 12px #20201e10; }
+.alumni-node.selected { background:#fff4c2; border:2px solid #c7a028; box-shadow:0 3px 10px #98731214; }
+.alumni-node.selected span { color:#6b571e; }
+.graph-footer { border-top:1px solid var(--line); background:#fafaf7; padding:14px 22px; }
+.alumni-job-detail { padding:28px; gap:30px; border-top:3px solid #e5bd35; }
+.alumni-job-detail > div + div { padding-left:26px; border-left:1px solid var(--line); }
+.alumni-job-detail h2 { font-size:24px; line-height:1.2; font-weight:600; }
+.alumni-job-detail h3 { font-size:14px; font-weight:600; }
+.share-figure strong { color:var(--ink); font-size:38px; font-weight:700; }
+.share-figure span { color:var(--muted); line-height:1.5; }
+.tag, .record-detail .tag { background:#f0efea; color:#55544c; border:1px solid #e7e5db; border-radius:7px; }
+.alumni-job-detail .covered { background:#fff4c2; color:#675116; border-color:#e3ce7b; }
+.profile-facts, .journey { background:#f5f4ef; }
+.outcomes { margin-top:20px; }
+.profile-disclosure, .methodology { border-top:1px solid var(--line); margin-top:24px; }
+#view-resume .resume-chat-head { background:#242420; color:#fff; padding:26px 22px 22px; border-top:3px solid #ffcc00; }
+#view-resume .resume-chat-head h1 { color:#ffcc00; font-size:25px; font-weight:600; }
+#view-resume .resume-chat-head p { color:#d4d2c9; line-height:1.6; }
+#view-resume .resume-stage { background:#eae9e2; }
+#view-resume .resume-stage-bar { background:#fff; border-bottom:1px solid var(--line); padding:18px 22px; }
+#view-resume .resume-stage-bar h2 { color:var(--ink); font-weight:600; }
+#view-resume .resume-stage-bar .field-hint { color:var(--muted); }
+#view-resume .resume-prompts button { background:#f4f3ed; color:#46453d; border:1px solid #e3e1d7; border-radius:9px; }
+#view-resume .resume-prompts button:hover { background:#fff4c2; border-color:#d4ac32; }
+#view-resume .message.advisor { background:#f3f2ec; color:var(--ink); }
+#view-resume .message.user { background:#272723; color:#fff; }
+#view-resume .message.user .message-label { color:#ffcc00; }
+#resume-chat-form { border:1px solid #d5d2c5; background:#fff; border-radius:11px; }
+#resume-chat-form:focus-within { border-color:#b48d1b; box-shadow:0 0 0 3px #ffcc0026; }
+#view-resume .resume-upload-prompt { background:#fff; border:1px dashed #c5bd9d; padding:32px; }
+.resume-sheet { box-shadow:0 6px 24px #20201e12; }
+.school-entry .page-heading { border-radius:20px; }
+.school-entry .onboarding-card { box-shadow:0 6px 24px #20201e06; }
+.page-footer { color:var(--muted); border-top:1px solid var(--line); margin-top:36px; }
+
+.school-logo { display:flex; align-items:center; flex-shrink:0; padding-left:18px; margin-left:-10px; border-left:1px solid var(--line); }
+.school-logo img { display:block; height:48px; width:auto; object-fit:contain; }
+
+.footer-identity { display:flex; align-items:center; gap:24px; }
+.footer-identity .school-logo img { height:40px; }
+
+/* Alumni connections */
+.connect-positions { display: flex; flex-wrap: wrap; gap: 10px; max-height: 220px; overflow-y: auto; margin: 18px 0; }
+.connect-positions label { display: flex; gap: 8px; align-items: center; background: #f4eee5; padding: 9px 12px; border-radius: 10px; font-size: 14px; }
+.connect-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 24px; margin-top: 24px; }
+.connect-card { min-width: 0; }
+.connect-card table { margin: 18px 0; }
+.connect-contact { overflow-wrap: anywhere; margin: 18px 0; font-weight: 600; }
+.connect-draft { width: 100%; height: 300px; overflow-y: auto; resize: vertical; margin: 16px 0; padding: 16px; border: 2px solid var(--line); border-radius: 12px; font-family: inherit; font-size: 14px; line-height: 1.7; }
+
+#connect-email { margin: auto; padding: 0; width: min(760px, calc(100vw - 40px)); max-width: 760px; max-height: 90vh; overflow-y: auto; background: #fff; box-shadow: 0 24px 90px #0003; }
+#connect-email::backdrop { background: #17171780; backdrop-filter: blur(4px); }
+.email-header { display: flex; justify-content: space-between; align-items: center; padding: 24px 30px; background: var(--paper); border-bottom: 1px solid var(--line); }
+#connect-email h2 { margin: 5px 0 0; font-size: 23px; }
+.email-envelope { padding: 0 30px; }
+.email-row { display: flex; align-items: center; gap: 18px; padding: 17px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.email-row > :first-child { width: 64px; flex-shrink: 0; color: var(--muted); }
+#connect-email-to { overflow-wrap: anywhere; }
+#connect-email-subject { width: 100%; min-width: 0; border: 0; padding: 7px; background: transparent; font: inherit; font-weight: 600; color: var(--ink); }
+.email-content { padding: 20px 30px 0; }
+.email-content > label { font-size: 12px; color: var(--muted); }
+#connect-email-body { display: block; width: 100%; height: 32vh; min-height: 220px; resize: vertical; overflow-y: auto; border: 0; padding: 12px 0; background: #fff; color: var(--ink); font-family: inherit; font-size: 15px; line-height: 1.85; }
+.email-footer { padding: 16px 30px 24px; border-top: 1px solid var(--line); }
+#connect-email-status { font-size: 13px; margin: 0 0 12px; }
+#connect-email .email-note { font-size: 12px; color: var(--muted); margin: 14px 0 0; }

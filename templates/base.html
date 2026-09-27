@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="csrf-token" content="{{ session['csrf'] }}" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#387e7d" />
+    <meta name="theme-color" content="{% block theme_color %}#171717{% endblock %}" />
     <meta
       name="description"
       content="Explore the connections between your degree, campus experiences, and your next career chapter."
@@ -14,13 +14,14 @@
     </title>
     <link
       rel="stylesheet"
-      href="{{ url_for('static', filename='css/style.css', v=5) }}"
+      href="{{ url_for('static', filename='css/style.css', v=15) }}"
     />
-    {% block scripts %}<script src="{{ url_for('static', filename='js/main.js', v=5) }}" defer></script>
-    <script src="{{ url_for('static', filename='js/discover.js', v=5) }}" defer></script>
-    <script src="{{ url_for('static', filename='js/resume.js', v=5) }}" defer></script>{% endblock %}
+    {% block scripts %}<script src="{{ url_for('static', filename='js/main.js', v=12) }}" defer></script>
+    <script src="{{ url_for('static', filename='js/discover.js', v=11) }}" defer></script>
+    <script src="{{ url_for('static', filename='js/resume.js', v=5) }}" defer></script>
+    <script src="{{ url_for('static', filename='js/connect.js', v=2) }}" defer></script>{% endblock %}
   </head>
-  <body data-student-id="{{ student_id|default('') }}">
+  <body {% block body_attributes %}{% endblock %} data-student-id="{{ student_id|default('') }}">
     <a class="skip-link" href="#main">Skip to content</a>
     {% block content %}{% endblock %}
   </body>

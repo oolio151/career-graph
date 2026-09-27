@@ -36,6 +36,15 @@ def percentage(count, total):
     return round(100 * count / total, 1) if total else 0
 
 
+def person_name(record):
+    """Use dataset names when available; older samples still work with IDs."""
+    def clean(value):
+        return value.strip() if value and value.strip() != NA else ""
+    return (clean(record.get("full_name"))
+            or " ".join(filter(None, (clean(record.get("first_name")), clean(record.get("last_name")))))
+            or record["campus_id"])
+
+
 def internship_band(count):
     return min(int(count), 2)
 
@@ -71,6 +80,7 @@ class CareerData:
                 "expected_graduation_term", "internship_count", "credential_count",
                 "engagement_activity_count")
         result = {k: None if student[k] == NA else student[k] for k in keys}
+        result["full_name"] = person_name(student)
         courses = self.transcripts[campus_id]
         passed = {r["course_id"] for r in courses if r["grade"] in {"A", "B", "C", "D"}}
         skills = set()
@@ -111,7 +121,7 @@ class CareerData:
                 if len(jobs) > 1:
                     next_roles[jobs[1]["job_title"]] += 1
                     if len(examples) < 3:
-                        examples.append({"campus_id": alum["campus_id"], "graduation_year": alum["graduation_year"], "jobs": [{k: j[k] for k in ("job_title", "employer", "start_date", "end_date", "change_type")} for j in jobs]})
+                        examples.append({"campus_id": alum["campus_id"], "full_name": person_name(alum), "graduation_year": alum["graduation_year"], "jobs": [{k: j[k] for k in ("job_title", "employer", "start_date", "end_date", "change_type")} for j in jobs]})
             progressed = sum(next_roles.values())
             fields.append({"family": family, "count": len(members), "percent": percentage(len(members), len(employed)),
                 "titles": [t for t, _ in first_titles.most_common(3)],
@@ -147,6 +157,7 @@ class CareerData:
             "FACTS BLOCK (synthetic track dataset, snapshot 2026-09-15)",
             "",
             "STUDENT RECORD",
+            f"Student name: {student['full_name']}",
             f"Record ID: {student['campus_id']}",
             f"Major: {student['major']} | Track: {student['track']} | Level: {student['class_level']}",
             f"Cumulative GPA: {student['cumulative_gpa'] or 'not available yet'} | "

@@ -8,6 +8,13 @@ const skipResume = document.querySelector("#skip-resume");
 const resumeLabel = document.querySelector(".upload-label");
 const resumeHint = document.querySelector("#resume-hint");
 const csrf = document.querySelector('meta[name="csrf-token"]').content;
+const schoolInput = document.querySelector("#school");
+function applySchoolTheme() {
+  document.body.dataset.school = schoolInput.value;
+  document.querySelector('meta[name="theme-color"]').content = schoolInput.value === "umbc" ? "#171717" : "#387e7d";
+}
+schoolInput.addEventListener("change", applySchoolTheme);
+window.addEventListener("pageshow", applySchoolTheme);
 let lookup = 0;
 function showError(message) { error.textContent = message; error.hidden = !message; }
 async function findStudent() {
@@ -24,7 +31,7 @@ async function findStudent() {
     const student = await response.json();
     if (version !== lookup) return;
     if (!response.ok) throw new Error(student.error);
-    const title = document.createElement("strong"); title.textContent = student.major;
+    const title = document.createElement("strong"); title.textContent = `${student.full_name || student.campus_id} · ${student.major}`;
     const summary = document.createElement("p");
     summary.textContent = `${student.class_level} · ${student.track} · GPA ${student.cumulative_gpa ?? "not available yet"}`;
     const detail = document.createElement("p");

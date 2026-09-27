@@ -9,7 +9,7 @@ from pathlib import Path
 from unittest import mock
 
 from app import MAX_RESUME, create_app
-from career_data import CareerData
+from career_data import CareerData, person_name
 from gemini import MAX_OUTPUT_TOKENS, TRUNCATION_NOTICE, Gemini, GeminiError
 
 
@@ -220,6 +220,12 @@ class AppTests(unittest.TestCase):
 
 
 class CalculationTests(unittest.TestCase):
+    def test_person_names_support_full_partial_and_legacy_records(self):
+        self.assertEqual(person_name({"campus_id": "CID-123456", "full_name": "Ada Lovelace"}), "Ada Lovelace")
+        self.assertEqual(person_name({"campus_id": "CID-123456", "full_name": "Not Applicable",
+                                      "first_name": "Ada", "last_name": "Lovelace"}), "Ada Lovelace")
+        self.assertEqual(person_name({"campus_id": "CID-123456"}), "CID-123456")
+
     def fixture(self):
         d = CareerData.__new__(CareerData)
         d.students = {"student": {"major":"Computer Science", "track":"General", "cumulative_gpa":"3.0", "internship_count":"0"}}

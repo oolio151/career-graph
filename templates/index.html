@@ -57,12 +57,11 @@
   </symbol>
 </svg>
 <header class="site-header">
-  <a href="#discover" class="brand" aria-label="Career Graph home"><span class="brand-symbol"><svg class="icon" aria-hidden="true"><use href="#i-graph" /></svg></span>careergraph</a>
+  <a href="#discover" class="brand" aria-label="Career Graph home"><span class="brand-symbol"><svg class="icon" aria-hidden="true"><use href="#i-graph" /></svg></span>careergraph</a><span class="school-logo"><img src="{{ url_for('static', filename='images/umbc.png') }}" alt="University of Maryland, Baltimore County" height="48"></span>
   <nav id="sidebar" aria-label="Main navigation">
     <button class="nav-item active" data-view="discover" aria-current="page">Discover</button>
     <button class="nav-item" data-view="resume">Resume</button>
-    <button class="nav-item" data-view="explore">Map demo</button>
-    <button class="nav-item" data-view="engagement">Activities</button>
+    <button class="nav-item" data-view="connect">Connect</button>
   </nav>
   <button class="icon-button" id="about-button" aria-label="About this demo"><svg class="icon" aria-hidden="true"><use href="#i-info" /></svg></button>
 </header>
@@ -73,129 +72,8 @@
     </section>
     {% include "discover.html" %}
     {% include "resume.html" %}
-    <div class="view" id="view-explore" hidden>
-      <div class="major-picker"><label for="major"><svg class="icon" aria-hidden="true"><use href="#i-cap" /></svg>I'm studying</label><select id="major"><option value="cs">Computer Science</option><option value="is">Information Systems</option></select><span class="demo-label">Example pathways</span></div>
-      <section class="pathway-section" aria-labelledby="pathway-title">
-        <div class="section-heading">
-          <div>
-            <h2 id="pathway-title">See where it could lead.</h2>
-            <p>Choose a role to see the skills behind it.</p>
-          </div>
-
-        </div>
-        <div class="explorer">
-          <div class="graph-panel">
-            <div class="graph-toolbar">
-              <div
-                class="segmented"
-                role="group"
-                aria-label="Filter career pathways"
-              >
-                <button class="selected" data-filter="all" aria-pressed="true">
-                  All roles</button
-                ><button data-filter="engineering" aria-pressed="false">
-                  Engineering</button
-                ><button data-filter="data" aria-pressed="false">
-                  Data
-                </button>
-              </div>
-              <button
-                class="icon-button"
-                id="reset-graph"
-                aria-label="Reset pathway filters"
-                title="Reset pathway filters"
-              >
-                ↺
-              </button>
-            </div>
-            <div
-              class="graph-scroll"
-              tabindex="0"
-              aria-label="Career pathway map. Scroll horizontally on smaller screens."
-            >
-              <div class="graph-canvas" id="graph-canvas">
-                <div class="graph-column-label start-label">Your degree</div>
-                <div class="graph-column-label first-label">
-                  Start here
-                </div>
-                <div class="graph-column-label next-label">Grow into</div>
-                <svg
-                  class="graph-edges"
-                  viewBox="0 0 830 368"
-                  aria-hidden="true"
-                >
-                  <path
-                    class="edge engineering"
-                    d="M176 184C222 184 212 80 264 80"
-                  />
-                  <path
-                    class="edge engineering"
-                    d="M176 184C222 184 212 184 264 184"
-                  />
-                  <path
-                    class="edge data"
-                    d="M176 184C222 184 212 288 264 288"
-                  />
-                  <path
-                    class="edge engineering"
-                    d="M457 80C505 80 505 80 560 80"
-                  />
-                  <path
-                    class="edge engineering"
-                    d="M457 184C510 184 505 80 560 80"
-                  />
-                  <path
-                    class="edge engineering"
-                    d="M457 184C505 184 510 184 560 184"
-                  />
-                  <path
-                    class="edge data"
-                    d="M457 288C505 288 510 288 560 288"
-                  />
-                  <path
-                    class="edge cross-edge"
-                    d="M457 80C515 80 505 184 560 184"
-                  />
-                </svg>
-                <div class="degree-node">
-                  <span class="degree-node-icon"
-                    ><svg class="icon"><use href="#i-cap" /></svg></span
-                  ><strong id="degree-name">Computer<br />Science</strong
-                  ><span class="node-port"></span>
-                </div>
-                <div id="role-nodes"></div>
-              </div>
-            </div>
-            <div class="graph-footer"><span class="map-desktop-hint">Select a role. Follow the connections.</span><span class="map-scroll-hint">Swipe the map to see more roles.</span></div>
-          </div>
-          <aside
-            class="role-detail"
-            id="role-detail"
-            aria-label="Selected role details"
-            aria-live="polite"
-          ></aside>
-        </div>
-      </section>
-      <section class="next-grid">
-        <div class="experience-preview">
-          <div class="section-heading">
-            <div>
-
-              <h2>Try something new.</h2>
-            </div>
-            <button class="inline-link" data-view="engagement">
-              All activities <span>↗</span>
-            </button>
-          </div>
-          <div class="experience-cards" id="experience-preview"></div>
-        </div>
-      </section>
-    </div>
-    <div class="view" id="view-engagement" hidden>
-      <div class="engagement-grid" id="engagement-grid"></div>
-      <p class="context-note">Example activities. Save the ones you want to try.</p>
-    </div>
-    <footer class="page-footer"><span class="footer-brand">careergraph</span><span>Synthetic data · Sept 2026</span><a href="https://github.com/jasonpaluck/hackumbc-2026" target="_blank" rel="noopener noreferrer">Made for HackUMBC</a></footer>
+    {% include "connect.html" %}
+    <footer class="page-footer"><span class="footer-identity"><span class="footer-brand">careergraph</span><span class="school-logo"><img src="{{ url_for('static', filename='images/umbc.png') }}" alt="University of Maryland, Baltimore County" height="40"></span></span><span>Synthetic data · Sept 2026</span><a href="https://github.com/jasonpaluck/hackumbc-2026" target="_blank" rel="noopener noreferrer">Made for HackUMBC 2026</a></footer>
   </main>
 </div>
 <dialog id="about-dialog">
@@ -216,8 +94,7 @@
     open jobs or predictions.
   </p>
   <p>
-    The pathway map, example salaries, and activities are a
-    separate demo. They are not calculated from those records. The dataset does
+    Connect matches alumni by recorded background and career interests and drafts introductions using Gemini. Contact details are synthetic and drafts are not sent. The dataset does
     not describe real UMBC students or employers.
   </p>
   <a

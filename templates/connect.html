@@ -1,0 +1,31 @@
+<section class="view" id="view-connect" hidden aria-label="Connect with alumni">
+  <div class="onboarding-card">
+    <h2>Positions you’re interested in</h2>
+    <p class="field-hint">Choose up to ten. Leave all unchecked to explore your whole major.</p>
+    <div id="connect-positions" class="connect-positions" role="group" aria-label="Positions"></div>
+    <button type="button" class="primary-button" id="connect-search">Find similar alumni</button>
+    <p class="field-hint">Synthetic alumni and contact addresses for demonstration. Email drafts stay here until you copy them.</p>
+    <details><summary>How similarity is calculated</summary><p id="connect-method" class="field-hint"></p></details>
+  </div>
+  <p id="connect-status" role="status" class="field-hint"></p>
+  <div id="connect-results" class="connect-grid"></div>
+</section>
+<dialog id="connect-email" aria-labelledby="connect-email-title">
+  <header class="email-header">
+    <div><span class="eyebrow">YOUR INTRODUCTION</span><h2 id="connect-email-title">Email draft</h2></div>
+    <button type="button" class="icon-button" id="connect-email-close" aria-label="Close email draft">×</button>
+  </header>
+  <div class="email-envelope">
+    <div class="email-row"><span>To:</span><span id="connect-email-to"></span></div>
+    <div class="email-row"><label for="connect-email-subject">Subject:</label><input id="connect-email-subject" type="text" autocomplete="off" disabled></div>
+  </div>
+  <div class="email-content">
+    <label for="connect-email-body">Body</label>
+    <textarea id="connect-email-body" placeholder="Gemini is writing your introduction…" disabled></textarea>
+  </div>
+  <footer class="email-footer">
+    <p id="connect-email-status" role="status" aria-live="polite"></p>
+    <button type="button" class="primary-button" id="connect-email-copy" disabled>Copy email</button>
+    <p class="email-note">Synthetic contact · Editable draft · Nothing is sent</p>
+  </footer>
+</dialog>

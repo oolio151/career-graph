@@ -13,16 +13,13 @@ from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.utils import secure_filename
 
 from career_data import CareerData
+from dotenv import load_dotenv
 from gemini import DEFAULT_MODEL, Gemini
+from python.discover_map import discover_map
+from python.connect import matches, draft_email
+from gemini import GeminiError
 
 MAX_RESUME = 5 * 1024 * 1024
-
-try:
-    from dotenv import load_dotenv
-except ImportError:
-    pass
-else:
-    load_dotenv()
 
 
 def validate_resume(upload):
@@ -129,6 +126,7 @@ def _pdf_text(data):
 
 
 def create_app(test_config=None):
+    load_dotenv(Path(__file__).resolve().parent / ".env")
     app = Flask(__name__, instance_relative_config=True)
     app.config.update(MAX_CONTENT_LENGTH=MAX_RESUME + 65536, SESSION_COOKIE_HTTPONLY=True,
                       SESSION_COOKIE_SAMESITE="Lax", DATA_DIR=Path(app.root_path) / "data",
@@ -212,7 +210,6 @@ def create_app(test_config=None):
 
     @app.get("/api/resume/chat/config")
     def resume_chat_config():
-        """What the chat panel should label itself. Exposes no key material."""
         gemini = app.extensions["gemini"]
         return jsonify(engine="gemini" if gemini.enabled else "local",
                        model=gemini.model if gemini.enabled else "on-device rules")
@@ -270,9 +267,37 @@ def create_app(test_config=None):
             return jsonify(error="Enter your student ID and resume to continue."), 401
         filters = {key: request.args.get(key) == "1" for key in ("track", "gpa", "internships")}
         try:
-            return jsonify(dataset.discover(current["campus_id"], filters))
+            return jsonify(discover_map(dataset, current["campus_id"], filters))
         except ValueError as error:
             return jsonify(error=str(error)), 400
+
+    @app.get("/api/connect")
+    def connect_matches():
+        current = state()
+        if not current:
+            return jsonify(error="Sign in to find alumni."), 401
+        try:
+            return jsonify(matches(dataset, current['campus_id'], request.args.getlist('position')))
+        except ValueError as error:
+            return jsonify(error=str(error)), 400
+
+    @app.post("/api/connect/draft")
+    def connect_draft():
+        current = state()
+        if not current:
+            return jsonify(error="Sign in to draft an introduction."), 401
+        payload = request.get_json(silent=True)
+        if (not isinstance(payload, dict) or not isinstance(payload.get('alumni_id'), str)
+                or not isinstance(payload.get('positions', []), list)
+                or not all(isinstance(p, str) for p in payload.get('positions', []))):
+            return jsonify(error="Choose an alumnus and valid positions."), 400
+        try:
+            return jsonify(draft_email(dataset, current['campus_id'], payload['alumni_id'],
+                                       payload.get('positions', []), app.extensions['gemini']))
+        except ValueError as error:
+            return jsonify(error=str(error)), 400
+        except GeminiError as error:
+            return jsonify(error=str(error)), 503
 
     def resume_file(current):
         file = private / f"{session['upload_id']}{current['extension']}"
