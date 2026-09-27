@@ -56,6 +56,24 @@ class AppTests(unittest.TestCase):
         self.assertIn("attachment", downloaded.headers["Content-Disposition"])
         downloaded.close()
 
+    def test_instance_change_does_not_log_student_out(self):
+        self.assertEqual(self.enroll().status_code, 200)
+        with tempfile.TemporaryDirectory() as temp:
+            other = create_app({"TESTING": True, "SECRET_KEY": "test-only-key",
+                                "UPLOAD_DIR": Path(temp), "GEMINI_API_KEY": ""}).test_client()
+            other.set_cookie("session", self.client.get_cookie("session").value)
+            self.assertEqual(other.get("/app").status_code, 200)
+            self.assertEqual(other.get("/api/session").status_code, 200)
+            self.assertEqual(other.get("/api/discover").status_code, 200)
+            self.assertEqual(other.get("/api/resume").status_code, 404)
+            self.assertEqual(other.post("/api/session/clear", headers={"X-CSRF-Token": self.csrf}).status_code, 200)
+            self.assertEqual(other.get("/api/session").status_code, 401)
+
+    def test_vercel_requires_stable_session_key(self):
+        with tempfile.TemporaryDirectory() as temp, mock.patch.dict("os.environ", {"VERCEL": "1"}):
+            with self.assertRaisesRegex(RuntimeError, "persistent SECRET_KEY"):
+                create_app({"TESTING": True, "SECRET_KEY": "", "UPLOAD_DIR": Path(temp)})
+
     def test_skip_resume_then_upload_in_workspace(self):
         response = self.client.post("/api/enroll", data={"campus_id": "CID-116490"},
                                     headers={"X-CSRF-Token": self.csrf})

@@ -184,6 +184,9 @@ def create_app(test_config=None):
     private = Path(app.config["UPLOAD_DIR"])
     private.mkdir(parents=True, exist_ok=True, mode=0o700)
     if not app.config.get("SECRET_KEY"):
+        if vercel_runtime:
+            raise RuntimeError("Set a persistent SECRET_KEY in Vercel Environment Variables before deploying. "
+                               "All instances must use the same session signing key.")
         key_file = private.parent / "session.key"
         if not key_file.exists():
             try:
@@ -201,11 +204,16 @@ def create_app(test_config=None):
         token = session.get("upload_id", "")
         if not re.fullmatch(r"[a-f0-9]{32}", token):
             return None
+        # Signed cookie metadata survives routing to an instance without local files.
+        current = session.get("student_state")
+        if isinstance(current, dict) and current.get("campus_id") in dataset.students:
+            return current
         path = private / f"{token}.json"
         try:
             result = json.loads(path.read_text())
             if result["campus_id"] not in dataset.students:
                 return None
+            session["student_state"] = result
             return result
         except (OSError, ValueError, KeyError):
             return None
@@ -216,6 +224,7 @@ def create_app(test_config=None):
             for file in private.glob(f"{token}.*"):
                 file.unlink(missing_ok=True)
         session.pop("upload_id", None)
+        session.pop("student_state", None)
 
     def resume_skill_cache():
         return private / f"{session['upload_id']}.skills.json"
@@ -300,6 +309,7 @@ def create_app(test_config=None):
             return jsonify(error="Could not save your resume. Please try again."), 500
         clear_upload()
         session["upload_id"] = token
+        session["student_state"] = metadata
         if request.form.get("school") == "umbc":
             session["school"] = "umbc"
         return jsonify(next="/app#discover")

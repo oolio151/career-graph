@@ -85,6 +85,15 @@ Look for `LaTeX deployment bundle ready` in build logs. No external rendering se
 additional API key is needed. Custom class files, images, and system fonts still need to
 be supplied separately; a standalone `.tex` upload cannot include those dependencies.
 
+Set `SECRET_KEY` in Vercel Environment Variables to a single random value, generated with
+`python -c "import secrets; print(secrets.token_hex(32))"`, and redeploy. Keep this value
+stable across deployments; changing it invalidates existing sessions. Vercel startup fails
+with a configuration error if it is missing, instead of generating different signing keys
+per instance. Student selection and resume metadata live in the signed session cookie, so
+missing temporary files no longer log the student out. Resume contents and conversation
+history currently still use `/tmp` on Vercel: they are not durable or shared across instances.
+Persistent private storage is required to retain those files reliably in production.
+
 Gemini edit requests use JSON output, include the source once, and allow 90 seconds on the
 server and 100 seconds in the browser. Recent conversation and profile context are retained.
 
