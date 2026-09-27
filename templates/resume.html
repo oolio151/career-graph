@@ -7,7 +7,7 @@
       </div>
       <div id="resume-messages" role="log" aria-live="polite" aria-relevant="additions"></div>
       <div class="resume-prompts">
-        <button type="button" data-resume-prompt="What should my resume emphasize?">What should my resume emphasize?</button>
+        <button type="button" data-resume-prompt="Improve my resume">Improve my resume</button>
         <button type="button" data-resume-prompt="Which roles does my resume fit?">Which roles does my resume fit?</button>
         <button type="button" data-resume-prompt="What experience should I gain?">What experience should I gain?</button>
         <button type="button" data-resume-prompt="How did similar alumni start?">How did similar alumni start?</button>
@@ -25,7 +25,18 @@
           <h2 id="resume-filename">Resume</h2>
           <p id="resume-file-note" class="field-hint"></p>
         </div>
-        <a class="secondary-button" href="/api/resume">Download</a>
+        <div class="resume-stage-actions">
+          <button type="button" class="primary-button" id="render-latex">Render PDF</button>
+          <button type="button" class="secondary-button" id="download-draft">Download draft</button>
+          <a class="secondary-button" href="/api/resume">Original</a>
+        </div>
+      </div>
+      <div class="resume-tabs" role="tablist" aria-label="Resume views">
+        <button type="button" role="tab" aria-selected="true" data-resume-view="draft">Draft</button>
+        <button type="button" role="tab" aria-selected="false" data-resume-view="changes">Changes <span id="resume-change-count">0</span></button>
+        <button type="button" role="tab" aria-selected="false" data-resume-view="latex">LaTeX</button>
+        <button type="button" role="tab" aria-selected="false" data-resume-view="preview">Preview</button>
+        <button type="button" role="tab" aria-selected="false" data-resume-view="original">Original</button>
       </div>
       <div id="resume-upload-prompt" class="resume-upload-prompt" hidden>
         <h3>Add your resume to get started.</h3>
