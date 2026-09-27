@@ -163,9 +163,12 @@ def _pdf_text(data):
 def create_app(test_config=None):
     load_dotenv(Path(__file__).resolve().parent / ".env")
     app = Flask(__name__, instance_relative_config=True)
+    vercel_runtime = os.environ.get("VERCEL") == "1"
+    upload_default = Path("/tmp/grit-resumes") if vercel_runtime else Path(app.instance_path) / "resumes"
     app.config.update(MAX_CONTENT_LENGTH=MAX_RESUME + 65536, SESSION_COOKIE_HTTPONLY=True,
                       SESSION_COOKIE_SAMESITE="Lax", DATA_DIR=Path(app.root_path) / "data",
-                      UPLOAD_DIR=Path(app.instance_path) / "resumes",
+                      UPLOAD_DIR=upload_default,
+                      SECRET_KEY=os.environ.get("SECRET_KEY", ""),
                       GEMINI_API_KEY=os.environ.get("GEMINI_API_KEY", ""),
                       GEMINI_MODEL=os.environ.get("GEMINI_MODEL", DEFAULT_MODEL))
     if test_config:
